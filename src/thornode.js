@@ -1,98 +1,99 @@
 const axios = require("axios");
+const { endpoints } = require("../endpoints");
 require('dotenv').config();
 
 const axiosInstace = axios.create({
-  baseURL: process.env.THORNODE_URL,
+  baseURL: endpoints[process.env.NETWORK].THORNODE_URL,
   timeout: 20000,
 });
 
 function getMimir() {
-  return axiosInstace.get(process.env.THORNODE_URL + "thorchain/mimir");
+  return axiosInstace.get("thorchain/mimir");
 }
 
 function getBalance(address) {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `bank/balances/${address}`
+    `bank/balances/${address}`
   );
 }
 
 function getLastBlockHeight() {
-  return axiosInstace.get(process.env.THORNODE_URL + "thorchain/lastblock");
+  return axiosInstace.get("thorchain/lastblock");
 }
 
 function getRPCLastBlockHeight() {
-  return axiosInstace.get(process.env.THORNODE_URL + "blocks/latest");
+  return axiosInstace.get("blocks/latest");
 }
 
 function getNativeTx(txID) {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `cosmos/tx/v1beta1/txs/${txID}`
+    `cosmos/tx/v1beta1/txs/${txID}`
   );
 }
 
 function getThorNetwork() {
-  return axiosInstace.get(process.env.THORNODE_URL + `thorchain/network`);
+  return axiosInstace.get(`thorchain/network`);
 }
 
 function getInboundAddresses() {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `thorchain/inbound_addresses`
+    `thorchain/inbound_addresses`
   );
 }
 
 function getMimirVotes() {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `thorchain/mimir/nodes_all`
+    `thorchain/mimir/nodes_all`
   );
 }
 
 function getLpPositions(poolName) {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `thorchain/pool/${poolName}/liquidity_providers`
+    `thorchain/pool/${poolName}/liquidity_providers`
   );
 }
 
 function getPoolDetail(poolName) {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `thorchain/pool/${poolName}`
+    `thorchain/pool/${poolName}`
   );
 }
 
 function getAssets() {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `cosmos/bank/v1beta1/supply`
+    `cosmos/bank/v1beta1/supply`
   );
 }
 
 function getSupplyRune() {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `cosmos/bank/v1beta1/supply/rune`
+    `cosmos/bank/v1beta1/supply/rune`
   );
 }
 
 function getThorPools() {
-  return axiosInstace.get(process.env.THORNODE_URL + `thorchain/pools`);
+  return axiosInstace.get(`thorchain/pools`);
 }
 
 function getYggdrasil() {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `thorchain/vaults/yggdrasil`
+    `thorchain/vaults/yggdrasil`
   );
 }
 
 function getAsgard() {
-  return axiosInstace.get(process.env.THORNODE_URL + `thorchain/vaults/asgard`);
+  return axiosInstace.get(`thorchain/vaults/asgard`);
 }
 
 function getAddresses() {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `cosmos/auth/v1beta1/accounts`
+    `cosmos/auth/v1beta1/accounts`
   );
 }
 
 function getOutbound() {
   return axiosInstace.get(
-    process.env.THORNODE_URL + `thorchain/queue/outbound`
+    `thorchain/queue/outbound`
   );
 }
 

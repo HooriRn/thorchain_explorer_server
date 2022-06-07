@@ -114,4 +114,3 @@ app.get("/api/*", (req, res) => {
 });
 
 app.listen(PORT, HOST);
-console.log(process.env.THORNODE_URL)

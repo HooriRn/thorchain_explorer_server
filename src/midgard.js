@@ -1,8 +1,9 @@
 const axios = require("axios");
+const { endpoints } = require("../endpoints");
 require('dotenv').config();
 
 const axiosInstace = axios.create({
-  baseURL: process.env.MIDGARD_BASE_URL,
+  baseURL: endpoints[process.env.NETWORK].MIDGARD_BASE_URL,
   timeout: 20000,
 });
 
