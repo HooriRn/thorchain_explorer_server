@@ -97,9 +97,16 @@ function getOutbound() {
   );
 }
 
+function getNodes() {
+  return axiosInstace.get(
+    `thorchain/nodes`
+  )
+}
+
 module.exports = {
   getAddresses,
   getRPCLastBlockHeight,
   getSupplyRune,
   getLastBlockHeight,
+  getNodes
 };

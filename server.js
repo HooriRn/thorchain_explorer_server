@@ -24,6 +24,10 @@ var data = {
     fetcher: requests.dashboardPlots,
     updateEvery: 120 /*seconds*/,
   },
+  extraNodesInfo: {
+    fetcher: requests.extraNodesInfo,
+    updateEvery: 20 /*seconds*/
+  }
 };
 
 /* Update all the values at server init */

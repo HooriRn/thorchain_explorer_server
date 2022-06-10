@@ -9,4 +9,6 @@ RUN npm ci --only=production
 COPY . .
 EXPOSE 8080
 
+ENV NETWORK=mainnet
+
 CMD [ "node", "server.js" ]
