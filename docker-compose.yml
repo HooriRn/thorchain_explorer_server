@@ -31,6 +31,21 @@ services:
       - PORT=9000
       - NETWORK=stagenet
 
+  nodejs_testnet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nodejs
+    container_name: nodejs_stage
+    restart: unless-stopped
+    networks:
+      - app-network
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NETWORK=testnet
+
   webserver:
     image: nginx:mainline-alpine
     container_name: webserver

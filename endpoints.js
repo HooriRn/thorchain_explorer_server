@@ -7,12 +7,12 @@ const endpoints = {
   "stagenet": {
     MIDGARD_BASE_URL: "https://stagenet-midgard.ninerealms.com/v2/",
     THORNODE_URL: "https://stagenet-thornode.ninerealms.com/",
-    TENDERMINT_URL: ""
+    TENDERMINT_URL: "https://stagenet-rpc.ninerealms.com/"
   },
   "testnet": {
     MIDGARD_BASE_URL: "https://testnet.midgard.thorchain.info/v2/",
     THORNODE_URL: "https://testnet.thornode.thorchain.info/",
-    TENDERMINT_URL: ""
+    TENDERMINT_URL: "https://testnet.rpc.thorchain.info/"
   }
 }
 
