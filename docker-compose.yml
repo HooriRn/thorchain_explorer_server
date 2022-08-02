@@ -10,6 +10,27 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - NETWORK=mainnet
+
+  nodejs_stage:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nodejs
+    container_name: nodejs_stage
+    restart: unless-stopped
+    networks:
+      - app-network
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - NETWORK=stagenet
+
   webserver:
     image: nginx:mainline-alpine
     container_name: webserver
@@ -25,8 +46,10 @@ services:
       - dhparam:/etc/ssl/certs
     depends_on:
       - nodejs
+      - nodejs_stage
     networks:
       - app-network
+
   certbot:
     image: certbot/certbot
     container_name: certbot

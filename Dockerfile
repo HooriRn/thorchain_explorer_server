@@ -7,8 +7,8 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 COPY . .
-EXPOSE 8080
+EXPOSE ${PORT}
 
-ENV NETWORK=mainnet
+ENV NETWORK=${NETWORK}
 
 CMD [ "node", "server.js" ]
