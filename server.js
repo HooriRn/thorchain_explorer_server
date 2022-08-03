@@ -27,6 +27,10 @@ var data = {
   extraNodesInfo: {
     fetcher: requests.extraNodesInfo,
     updateEvery: 20 /*seconds*/
+  },
+  ohclPrice: {
+    fetcher: requests.OHCLprice,
+    updateEvery: 60 /*seconds*/
   }
 };
 
@@ -116,5 +120,9 @@ app.get("/api/:key", async (req, res) => {
 app.get("/api/*", (req, res) => {
   res.status(404).send({ msg: "Not found", url: req.url });
 });
+
+app.get("/", (req, res) => {
+  res.send('<p>Welcome!</p>')
+})
 
 app.listen(PORT, HOST);

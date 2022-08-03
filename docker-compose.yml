@@ -36,7 +36,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: nodejs
-    container_name: nodejs_stage
+    container_name: nodejs_testnet
     restart: unless-stopped
     networks:
       - app-network
