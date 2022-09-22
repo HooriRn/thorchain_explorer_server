@@ -14,5 +14,8 @@
     "dotenv": "^16.0.1",
     "express": "^4.16.1",
     "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "eslint": "^8.23.1"
   }
 }
