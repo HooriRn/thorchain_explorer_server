@@ -49,7 +49,7 @@ class Fetchers {
 		try{
 			var params = {
 				vs_currency: 'usd',
-				ids: 'bitcoin,ethereum,dogecoin,litecoin,bitcoin-cash,bitcoin,thorchain,binancecoin,terra-luna,binance-usd,usd-coin,tether,terrausd'
+				ids: 'bitcoin,ethereum,dogecoin,litecoin,bitcoin-cash,bitcoin,thorchain,binancecoin,binance-usd,usd-coin,tether,avalanche-2,cosmos'
 			};
 			var fetched = await axios.get('https://api.coingecko.com/api/v3/coins/markets', { params: params });
 			return fetched.data;
