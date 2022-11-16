@@ -3,6 +3,7 @@ const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, 
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
 const chunk = require('lodash/chunk');
+const { endpoints } = require('../endpoints');
 
 async function dashboardPlots() {
 	const {data: LPChange} = await volumeHistory();
@@ -115,12 +116,12 @@ async function OHCLprice() {
 }
 
 const getSaversCount = async (pool) => {
-	let savers = (await axios.get(`https://thornode.ninerealms.com/thorchain/pool/${pool}/savers`)).data;
+	let savers = (await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pool/${pool}/savers`)).data;
 	return savers.length;
 };
 
 const getPools = async () => {
-	let {data} = await axios.get('https://thornode.ninerealms.com/thorchain/pools');
+	let {data} = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pools`);
 	return data.filter((x) => x.status == 'Available');
 };
 
