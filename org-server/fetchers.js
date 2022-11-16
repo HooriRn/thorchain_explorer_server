@@ -1,5 +1,5 @@
 const axios = require('axios');
-const midgardBaseUrl = 'https://midgard.thorchain.info/v2/';
+const midgardBaseUrl = 'https://midgard.ninerealms.com/v2/';
 
 function parseCoingeckoMarkets(data) {
 	var parsed = [];
