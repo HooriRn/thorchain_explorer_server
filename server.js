@@ -31,6 +31,10 @@ var data = {
 	ohclPrice: {
 		fetcher: requests.OHCLprice,
 		updateEvery: 60 /*seconds*/
+	},
+	saversExtraData: {
+		fetcher: requests.getSaversExtra,
+		updateEvery: 60 /*seconds*/
 	}
 };
 

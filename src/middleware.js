@@ -114,9 +114,51 @@ async function OHCLprice() {
 	return chartData;
 }
 
+const getSaversCount = async (pool) => {
+	let savers = (await axios.get(`https://thornode.ninerealms.com/thorchain/pool/${pool}/savers`)).data;
+	return savers.length;
+};
+
+const getPools = async () => {
+	let {data} = await axios.get('https://thornode.ninerealms.com/thorchain/pools');
+	return data.filter((x) => x.status == 'Available');
+};
+
+async function getSaversExtra() {
+	const pools = await getPools();
+	const height_start_savers = 8195056;
+	const blocksPerYear = 5256000;
+	const height_now = (await getRPCLastBlockHeight()).data.block.header.height;
+
+	const saversPool = {};
+	for (let pool of pools) {
+		let saverGrowth = (pool.savers_depth - pool.savers_units) / pool.savers_units;
+		let saverReturn = (saverGrowth / (height_now - height_start_savers)) * blocksPerYear;
+
+		if (pool.savers_depth == 0) {
+			continue;
+		}
+
+		let saversCount = await getSaversCount(pool.asset);
+		let saverCap = 0.30 * pool.balance_asset;
+		let filled = pool.savers_depth / saverCap;
+
+		saversPool[pool.asset] = {
+			asset: pool.asset,
+			filled,
+			saversCount,
+			saverReturn
+		};
+	}
+
+	return saversPool;
+
+}
+
 module.exports = {
 	dashboardData,
 	dashboardPlots,
 	extraNodesInfo,
-	OHCLprice
+	OHCLprice,
+	getSaversExtra
 };
