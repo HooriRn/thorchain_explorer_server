@@ -1,4 +1,4 @@
-const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory } = require('./midgard');
+const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools } = require('./midgard');
 const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes } = require('./thornode');
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
@@ -120,40 +120,48 @@ const getSaversCount = async (pool) => {
 	return savers.length;
 };
 
-const getPools = async () => {
-	let {data} = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pools`);
+const getPools = async (height) => {
+	let {data} = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pools` + (height ? `?height=${height}`:''));
 	return data.filter((x) => x.status == 'Available');
 };
 
 async function getSaversExtra() {
 	const pools = await getPools();
-	const height_start_savers = 8195056;
-	const blocksPerYear = 5256000;
+	const midgardPools = (await getMidgardPools()).data;
 	const height_now = (await getRPCLastBlockHeight()).data.block.header.height;
+	const height7DaysAgo = height_now - ((7 * 24 * 60 * 60) / 6);
+	const oldPools = await getPools(height7DaysAgo);
 
 	const saversPool = {};
 	for (let pool of pools) {
-		let saverGrowth = (pool.savers_depth - pool.savers_units) / pool.savers_units;
-		let saverReturn = (saverGrowth / (height_now - height_start_savers)) * blocksPerYear;
-
 		if (pool.savers_depth == 0) {
 			continue;
 		}
 
+		let oldPool = oldPools.find(p => p.asset === pool.asset);
+		if (!oldPool) continue;
+
+		let saverBeforeGrowth = oldPool.savers_depth / oldPool.savers_units;
+		let saverGrowth = pool.savers_depth / pool.savers_units;
+		let saverReturn = ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365/7);
+
 		let saversCount = await getSaversCount(pool.asset);
 		let saverCap = 0.30 * pool.balance_asset;
 		let filled = pool.savers_depth / saverCap;
+		let earned = pool.savers_depth - pool.savers_units;
+		let assetPrice = midgardPools.find(p => p.asset === pool.asset).assetPrice;
 
 		saversPool[pool.asset] = {
 			asset: pool.asset,
 			filled,
 			saversCount,
-			saverReturn
+			saverReturn,
+			earned,
+			assetPrice
 		};
 	}
 
 	return saversPool;
-
 }
 
 module.exports = {

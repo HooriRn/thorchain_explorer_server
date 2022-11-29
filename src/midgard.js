@@ -112,6 +112,10 @@ function getRevThorname(address) {
 	return axiosInstace.get(`thorname/rlookup/${address}`);
 }
 
+function getMidgardPools() {
+	return axiosInstace.get('pools');
+}
+
 module.exports = {
 	getTxs,
 	getStats,
@@ -119,4 +123,5 @@ module.exports = {
 	swapHistory,
 	tvlHistory,
 	earningsHistory,
+	getMidgardPools
 };
