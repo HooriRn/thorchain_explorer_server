@@ -149,7 +149,7 @@ async function getSaversExtra() {
 		let saverCap = 0.30 * pool.balance_asset;
 		let filled = pool.savers_depth / saverCap;
 		let earned = pool.savers_depth - pool.savers_units;
-		let assetPrice = midgardPools.find(p => p.asset === pool.asset).assetPrice;
+		let assetPrice = midgardPools.find(p => p.asset === pool.asset).assetPriceUSD;
 
 		saversPool[pool.asset] = {
 			asset: pool.asset,
