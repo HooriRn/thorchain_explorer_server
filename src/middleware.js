@@ -1,5 +1,5 @@
 const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools } = require('./midgard');
-const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes, getConstants } = require('./thornode');
+const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes, getMimir } = require('./thornode');
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
 const chunk = require('lodash/chunk');
@@ -129,7 +129,7 @@ async function getSaversExtra() {
 	const pools = await getPools();
 	const midgardPools = (await getMidgardPools()).data;
 	const height_now = (await getRPCLastBlockHeight()).data.block.header.height;
-	const synthCap = (await getConstants()).data.int_64_values.MaxSynthPerPoolDepth;
+	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
 	const height7DaysAgo = height_now - ((7 * 24 * 60 * 60) / 6);
 	const oldPools = await getPools(height7DaysAgo);
 

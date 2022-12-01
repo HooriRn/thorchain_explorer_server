@@ -116,5 +116,6 @@ module.exports = {
 	getSupplyRune,
 	getLastBlockHeight,
 	getNodes,
-	getConstants
+	getConstants,
+	getMimir
 };
