@@ -104,10 +104,17 @@ function getNodes() {
 	);
 }
 
+function getConstants() {
+	return axiosInstace.get(
+		'thorchain/constants'
+	);
+}
+
 module.exports = {
 	getAddresses,
 	getRPCLastBlockHeight,
 	getSupplyRune,
 	getLastBlockHeight,
-	getNodes
+	getNodes,
+	getConstants
 };

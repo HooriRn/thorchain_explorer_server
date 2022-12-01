@@ -1,5 +1,5 @@
 const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools } = require('./midgard');
-const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes } = require('./thornode');
+const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes, getConstants } = require('./thornode');
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
 const chunk = require('lodash/chunk');
@@ -129,6 +129,7 @@ async function getSaversExtra() {
 	const pools = await getPools();
 	const midgardPools = (await getMidgardPools()).data;
 	const height_now = (await getRPCLastBlockHeight()).data.block.header.height;
+	const synthCap = (await getConstants()).data.int_64_values.MaxSynthPerPoolDepth;
 	const height7DaysAgo = height_now - ((7 * 24 * 60 * 60) / 6);
 	const oldPools = await getPools(height7DaysAgo);
 
@@ -146,7 +147,7 @@ async function getSaversExtra() {
 		let saverReturn = ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365/7);
 
 		let saversCount = await getSaversCount(pool.asset);
-		let saverCap = 0.30 * pool.balance_asset;
+		let saverCap = ((2 * +synthCap) / 10e3) * pool.balance_asset;
 		let filled = pool.savers_depth / saverCap;
 		let earned = pool.savers_depth - pool.savers_units;
 		let assetPrice = midgardPools.find(p => p.asset === pool.asset).assetPriceUSD;
