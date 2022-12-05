@@ -115,8 +115,8 @@ async function OHCLprice() {
 	return chartData;
 }
 
-const getSaversCount = async (pool) => {
-	let savers = (await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pool/${pool}/savers`)).data;
+const getSaversCount = async (pool, height) => {
+	let savers = (await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}`:''))).data;
 	return savers.length;
 };
 
@@ -125,12 +125,20 @@ const getPools = async (height) => {
 	return data.filter((x) => x.status == 'Available');
 };
 
-async function getSaversExtra() {
-	const pools = await getPools();
+const getOldSaversExtra = async () => {
+	const height = (await getRPCLastBlockHeight()).data.block.header.height;
+	const heightBefore = height - ((24 * 60 * 60) / 6);
+	return await getSaversExtra(heightBefore);
+};
+
+async function getSaversExtra(height) {
+	if (!height)
+		height = (await getRPCLastBlockHeight()).data.block.header.height;
+	
+	const pools = await getPools(height);
 	const midgardPools = (await getMidgardPools()).data;
-	const height_now = (await getRPCLastBlockHeight()).data.block.header.height;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
-	const height7DaysAgo = height_now - ((7 * 24 * 60 * 60) / 6);
+	const height7DaysAgo = height - ((7 * 24 * 60 * 60) / 6);
 	const oldPools = await getPools(height7DaysAgo);
 
 	const saversPool = {};
@@ -146,7 +154,7 @@ async function getSaversExtra() {
 		let saverGrowth = pool.savers_depth / pool.savers_units;
 		let saverReturn = ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365/7);
 
-		let saversCount = await getSaversCount(pool.asset);
+		let saversCount = await getSaversCount(pool.asset, height);
 		let saverCap = ((2 * +synthCap) / 10e3) * pool.balance_asset;
 		let filled = pool.savers_depth / saverCap;
 		let earned = pool.savers_depth - pool.savers_units;
@@ -170,5 +178,6 @@ module.exports = {
 	dashboardPlots,
 	extraNodesInfo,
 	OHCLprice,
-	getSaversExtra
+	getSaversExtra,
+	getOldSaversExtra
 };

@@ -1,4 +1,5 @@
 // Constants
+require('dotenv').config();
 const PORT = process.env.PORT;
 const HOST = '0.0.0.0';
 const express = require('express');
@@ -35,6 +36,10 @@ var data = {
 	saversExtraData: {
 		fetcher: requests.getSaversExtra,
 		updateEvery: 60 /*seconds*/
+	},
+	oldSaversExtraData: {
+		fetcher: requests.getOldSaversExtra,
+		updateEvery: 6 * 60 * 60 /*every 6 hours*/
 	}
 };
 
