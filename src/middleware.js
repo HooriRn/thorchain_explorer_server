@@ -167,7 +167,8 @@ async function getSaversExtra(height) {
 			saverReturn,
 			earned,
 			assetPrice,
-			saversDepth: pool.savers_depth
+			saversDepth: pool.savers_depth,
+			assetDepth: pool.balance_asset
 		};
 	}
 
