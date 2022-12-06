@@ -166,6 +166,7 @@ async function getSaversExtra(height) {
 		let synthSupply = synthSupplies.find(a => a.denom === convertPoolNametoSynth(pool.asset))?.amount;
 		if (synthSupply) {
 			filled = synthSupply / saverCap;
+			saversPool[pool.asset].synthSupply = filled;
 		}
 		else {
 			filled = pool.savers_depth / saverCap;
@@ -181,7 +182,7 @@ async function getSaversExtra(height) {
 			earned,
 			assetPrice,
 			saversDepth: pool.savers_depth,
-			assetDepth: pool.balance_asset
+			assetDepth: pool.balance_asset,
 		};
 	}
 
