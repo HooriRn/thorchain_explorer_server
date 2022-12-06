@@ -114,6 +114,7 @@ module.exports = {
 	getAddresses,
 	getRPCLastBlockHeight,
 	getSupplyRune,
+	getAssets,
 	getLastBlockHeight,
 	getNodes,
 	getConstants,
