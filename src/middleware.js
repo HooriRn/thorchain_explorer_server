@@ -61,7 +61,7 @@ async function extraNodesInfo() {
 }
 
 async function OHCLprice() {
-	let {data} = await axios.get('https://node-api.flipsidecrypto.com/api/v2/queries/02011705-4694-45ec-9ada-d76127dc7956/data/latest');
+	let {data} = await axios.get('https://node-api.flipsidecrypto.com/api/v2/queries/1aaa2137-b392-40a1-a9ce-22512f02d722/data/latest');
 
 	let chartData = [];
 
