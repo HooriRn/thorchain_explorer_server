@@ -142,8 +142,8 @@ async function getSaversExtra(height) {
 	const pools = await getPools(height);
 	const midgardPools = (await getMidgardPools()).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
-	const height7DaysAgo = height - ((7 * 24 * 60 * 60) / 6);
-	const oldPools = await getPools(height7DaysAgo);
+	const height30DaysAgo = height - ((31 * 24 * 60 * 60) / 6);
+	const oldPools = await getPools(height30DaysAgo);
 	const synthSupplies = (await getAssets()).data.supply;
 
 	const saversPool = {};
@@ -157,7 +157,7 @@ async function getSaversExtra(height) {
 
 		let saverBeforeGrowth = oldPool.savers_depth / oldPool.savers_units;
 		let saverGrowth = pool.savers_depth / pool.savers_units;
-		let saverReturn = ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365/7);
+		let saverReturn = ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * 12;
 
 		let saversCount = await getSaversCount(pool.asset, height);
 
