@@ -1,4 +1,4 @@
-const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools } = require('./midgard');
+const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools, getEarnings } = require('./midgard');
 const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes, getMimir, getAssets } = require('./thornode');
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
@@ -146,6 +146,9 @@ async function getSaversExtra(height) {
 	const oldPools = await getPools(height30DaysAgo);
 	const synthSupplies = (await getAssets()).data.supply;
 
+	const earned = (await getEarnings()).data;
+	const deltaEarned = (await getEarnings('day', '1')).data;
+
 	const saversPool = {};
 	for (let pool of pools) {
 		if (pool.savers_depth == 0) {
@@ -170,7 +173,6 @@ async function getSaversExtra(height) {
 		else {
 			filled = pool.savers_depth / saverCap;
 		}
-		let earned = pool.savers_depth - pool.savers_units;
 		let assetPrice = midgardPools.find(p => p.asset === pool.asset).assetPriceUSD;
 
 		saversPool[pool.asset] = {
@@ -178,7 +180,8 @@ async function getSaversExtra(height) {
 			filled,
 			saversCount,
 			saverReturn,
-			earned,
+			earned: earned.meta.pools.find(p => p.pool === pool.asset).saverEarning,
+			deltaEarned: deltaEarned.meta.pools.find(p => p.pool === pool.asset).saverEarning,
 			assetPrice,
 			saversDepth: pool.savers_depth,
 			assetDepth: pool.balance_asset,

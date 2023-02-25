@@ -116,6 +116,18 @@ function getMidgardPools() {
 	return axiosInstace.get('pools');
 }
 
+function getEarnings(interval, count) {
+	const intervalParam = `interval=${interval}`;
+	const countParam = `count=${count}`;
+
+	let param = '';
+	if (interval && count) {
+		param = `?${intervalParam}&${countParam}`;
+	}
+
+	return axiosInstace.get('history/earnings' + param);
+}
+
 module.exports = {
 	getTxs,
 	getStats,
@@ -123,5 +135,6 @@ module.exports = {
 	swapHistory,
 	tvlHistory,
 	earningsHistory,
-	getMidgardPools
+	getMidgardPools,
+	getEarnings
 };
