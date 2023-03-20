@@ -112,10 +112,10 @@ app.get('/api/:key', async (req, res) => {
 			}
 
 			var value = data[key].value;
-			res.setHeader(
-				'Cache-Control',
-				's-maxage=60, stale-while-revalidate=119'
-			);
+			// res.setHeader(
+			// 	'Cache-Control',
+			// 	's-maxage=60, stale-while-revalidate=119'
+			// );
 			res.json(value);
 		} else {
 			res.status(404).json({ msg: 'Static data Not found', key });
