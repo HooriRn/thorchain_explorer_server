@@ -8,6 +8,9 @@ const axiosInstace = axios.create({
 	timeout: 20000,
 });
 
+const axiosRetry = require('axios-retry');
+axiosRetry(axiosInstace, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
+
 function getStats() {
 	return axiosInstace.get('stats');
 }
