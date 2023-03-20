@@ -2,8 +2,11 @@ const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistor
 const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes, getMimir, getAssets } = require('./thornode');
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
+const axiosRetry = require('axios-retry');
 const chunk = require('lodash/chunk');
 const { endpoints } = require('../endpoints');
+
+axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 async function dashboardPlots() {
 	const {data: LPChange} = await volumeHistory();
@@ -143,7 +146,13 @@ async function getSaversExtra(height) {
 	const midgardPools = (await getMidgardPools()).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
 	const height30DaysAgo = height - ((31 * 24 * 60 * 60) / 6);
-	const oldPools = await getPools(height30DaysAgo);
+	let oldPools = await getPools(height30DaysAgo);
+
+	let num = 0;
+	while (oldPools.length == 0 && num < 3) {
+		oldPools = await getPools(height30DaysAgo);
+	}
+
 	const synthSupplies = (await getAssets()).data.supply;
 
 	const earned = (await getEarnings()).data;
