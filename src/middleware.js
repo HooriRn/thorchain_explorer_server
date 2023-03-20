@@ -119,12 +119,17 @@ async function OHCLprice() {
 }
 
 const getSaversCount = async (pool, height) => {
-	let savers = (await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}`:''))).data;
+	let savers = (await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}`:''))).data;
 	return savers.length;
 };
 
 const getPools = async (height) => {
-	let {data} = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}/thorchain/pools` + (height ? `?height=${height}`:''));
+	let {data} = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}thorchain/pools` + (height ? `?height=${height}`:''));
+	return data.filter((x) => x.status == 'Available');
+};
+
+const getOldPools = async (height) => {
+	let {data} = await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}thorchain/pools` + (height ? `?height=${height}`:''));
 	return data.filter((x) => x.status == 'Available');
 };
 
@@ -146,12 +151,7 @@ async function getSaversExtra(height) {
 	const midgardPools = (await getMidgardPools()).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
 	const height30DaysAgo = height - ((31 * 24 * 60 * 60) / 6);
-	let oldPools = await getPools(height30DaysAgo);
-
-	let num = 0;
-	while (oldPools.length == 0 && num < 3) {
-		oldPools = await getPools(height30DaysAgo);
-	}
+	const oldPools = await getOldPools(height30DaysAgo);
 
 	const synthSupplies = (await getAssets()).data.supply;
 
