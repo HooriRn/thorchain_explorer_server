@@ -44,6 +44,22 @@ async function dashboardData() {
 	}
 }
 
+async function chainsHeight() {
+	const {data: nodes} = await getNodes();
+	const nodeObservedChains = nodes.filter(n => n.status === 'Active').map(n => n.observe_chains);
+
+	let maxChainHeights = {};
+	for (const node of nodeObservedChains) {
+		for (const observedChain of node) {
+			if (!maxChainHeights.hasOwnProperty(observedChain['chain']) || observedChain['height'] >= maxChainHeights[observedChain['chain']]) {
+				maxChainHeights[observedChain['chain']] = observedChain['height'];
+			}
+		}
+	}
+
+	return maxChainHeights;
+}
+
 async function extraNodesInfo() {
 	const {data: nodes} = await getNodes();
 	const chunks = chunk(nodes.filter(n => n.ip_address).map(n => n.ip_address), 100);
@@ -207,5 +223,6 @@ module.exports = {
 	extraNodesInfo,
 	OHCLprice,
 	getSaversExtra,
-	getOldSaversExtra
+	getOldSaversExtra,
+	chainsHeight
 };

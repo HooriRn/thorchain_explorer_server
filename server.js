@@ -29,6 +29,10 @@ var data = {
 		fetcher: requests.extraNodesInfo,
 		updateEvery: 20 /*seconds*/
 	},
+	chainsHeight: {
+		fetcher: requests.chainsHeight,
+		updateEvery: 30 /*seconds*/
+	},
 	ohclPrice: {
 		fetcher: requests.OHCLprice,
 		updateEvery: 60 /*seconds*/
