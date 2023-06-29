@@ -84,6 +84,18 @@ function earningsHistory() {
 	return axiosInstace.get('history/earnings?interval=day&count=30');
 }
 
+function getSaversHistory(interval='day', count='2', pool='BTC.BTC') {
+	const intervalParam = `interval=${interval}`;
+	const countParam = `count=${count}`;
+
+	let param = '';
+	if (interval && count) {
+		param = `${pool}?${intervalParam}&${countParam}`;
+	}
+
+	return axiosInstace.get('history/savers/' + param);
+}
+
 function getPoolVolume(poolName) {
 	return axiosInstace.get(
 		`history/liquidity_changes?pool=${poolName}&interval=day&count=30`
@@ -115,8 +127,8 @@ function getRevThorname(address) {
 	return axiosInstace.get(`thorname/rlookup/${address}`);
 }
 
-function getMidgardPools() {
-	return axiosInstace.get('pools');
+function getMidgardPools(period='180d') {
+	return axiosInstace.get(`pools?period=${period}`);
 }
 
 function getEarnings(interval, count) {
@@ -139,5 +151,6 @@ module.exports = {
 	tvlHistory,
 	earningsHistory,
 	getMidgardPools,
-	getEarnings
+	getEarnings,
+	getSaversHistory
 };

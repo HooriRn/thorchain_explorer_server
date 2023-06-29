@@ -1,4 +1,4 @@
-const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools, getEarnings } = require('./midgard');
+const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools, getEarnings, getSaversHistory } = require('./midgard');
 const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes, getMimir, getAssets } = require('./thornode');
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
@@ -9,10 +9,10 @@ const { endpoints } = require('../endpoints');
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 async function dashboardPlots() {
-	const {data: LPChange} = await volumeHistory();
-	const {data: swaps} = await swapHistory();
-	const {data: tvl} = await tvlHistory();
-	const {data: earning} = await earningsHistory();
+	const { data: LPChange } = await volumeHistory();
+	const { data: swaps } = await swapHistory();
+	const { data: tvl } = await tvlHistory();
+	const { data: earning } = await earningsHistory();
 
 	return {
 		LPChange,
@@ -45,7 +45,7 @@ async function dashboardData() {
 }
 
 async function chainsHeight() {
-	const {data: nodes} = await getNodes();
+	const { data: nodes } = await getNodes();
 	const nodeObservedChains = nodes.filter(n => n.status === 'Active').map(n => n.observe_chains);
 
 	let maxChainHeights = {};
@@ -61,17 +61,17 @@ async function chainsHeight() {
 }
 
 async function extraNodesInfo() {
-	const {data: nodes} = await getNodes();
+	const { data: nodes } = await getNodes();
 	const chunks = chunk(nodes.filter(n => n.ip_address).map(n => n.ip_address), 100);
 
 	let nodeInfo = {};
 	for (let ipchunk of chunks) {
-		let {data} = await axios.post('http://ip-api.com/batch', ipchunk);
+		let { data } = await axios.post('http://ip-api.com/batch', ipchunk);
 		data.forEach(d => {
 			try {
-				nodeInfo[d.query] = d; 
+				nodeInfo[d.query] = d;
 			} catch (error) {
-				console.error('got an error on assigning: ', d); 
+				console.error('got an error on assigning: ', d);
 			}
 		});
 	}
@@ -80,7 +80,7 @@ async function extraNodesInfo() {
 }
 
 async function OHCLprice() {
-	let {data} = await axios.get('https://node-api.flipsidecrypto.com/api/v2/queries/1aaa2137-b392-40a1-a9ce-22512f02d722/data/latest');
+	let { data } = await axios.get('https://node-api.flipsidecrypto.com/api/v2/queries/1aaa2137-b392-40a1-a9ce-22512f02d722/data/latest');
 
 	let chartData = [];
 
@@ -93,7 +93,7 @@ async function OHCLprice() {
 			lastDate = date;
 		}
 		if (date.isSame(lastDate, 'day')) {
-			sameDay.push({date, price: interval.DAILY_RUNE_PRICE});
+			sameDay.push({ date, price: interval.DAILY_RUNE_PRICE });
 		}
 		else {
 			let minPrice = Math.min.apply(Math, sameDay.map(d => d.price));
@@ -127,7 +127,7 @@ async function OHCLprice() {
 			// add the new date
 			lastDate = undefined;
 			sameDay = [];
-			sameDay.push({date, price: interval.DAILY_RUNE_PRICE, vol: interval.TOTAL_SWAP_VOLUME_USD});
+			sameDay.push({ date, price: interval.DAILY_RUNE_PRICE, vol: interval.TOTAL_SWAP_VOLUME_USD });
 		}
 	});
 
@@ -135,17 +135,17 @@ async function OHCLprice() {
 }
 
 const getSaversCount = async (pool, height) => {
-	let savers = (await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}`:''))).data;
+	let savers = (await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}` : ''))).data;
 	return savers.length;
 };
 
 const getPools = async (height) => {
-	let {data} = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}thorchain/pools` + (height ? `?height=${height}`:''));
+	let { data } = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}thorchain/pools` + (height ? `?height=${height}` : ''));
 	return data.filter((x) => x.status == 'Available');
 };
 
 const getOldPools = async (height) => {
-	let {data} = await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}thorchain/pools` + (height ? `?height=${height}`:''));
+	let { data } = await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}thorchain/pools` + (height ? `?height=${height}` : ''));
 	return data.filter((x) => x.status == 'Available');
 };
 
@@ -162,7 +162,7 @@ const convertPoolNametoSynth = (poolName) => {
 async function getSaversExtra(height) {
 	if (!height)
 		height = (await getRPCLastBlockHeight()).data.block.header.height;
-	
+
 	const pools = await getPools(height);
 	const midgardPools = (await getMidgardPools()).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
@@ -210,11 +210,85 @@ async function getSaversExtra(height) {
 			assetPrice,
 			saversDepth: pool.savers_depth,
 			assetDepth: pool.balance_asset,
-			...(synthSupply && {synthSupply})
+			...(synthSupply && { synthSupply })
 		};
 	}
 
 	return saversPool;
+}
+
+function calcSaverReturn(saversDepth, saversUnits, oldSaversDepth, oldSaversUnits, period) {
+	let saverBeforeGrowth = +oldSaversDepth / +oldSaversUnits;
+	let saverGrowth = +saversDepth / +saversUnits;
+	return ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (356 / period);
+}
+
+async function getSaversInfo(height) {
+	if (!height)
+		height = (await getRPCLastBlockHeight()).data.block.header.height;
+
+	const pools = (await getMidgardPools('7d')).data;
+	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
+
+	const synthSupplies = (await getAssets()).data.supply;
+
+	const earned = (await getEarnings()).data;
+	const { intervals: earningsInterval } = (await getEarnings('day', '2')).data;
+
+	const saversPool = {};
+	for (let pool of pools) {
+		if (pool.saversDepth == 0) {
+			continue;
+		}
+
+		let { intervals: sI, meta: saversMeta } = (await getSaversHistory('day', '9', pool.asset)).data;
+
+		let filled = 0;
+		let saverCap = ((2 * +synthCap) / 10e3) * pool.assetDepth;
+		let synthSupply = synthSupplies.find(a => a.denom === convertPoolNametoSynth(pool.asset))?.amount;
+		if (synthSupply) {
+			filled = synthSupply / saverCap;
+		}
+		else {
+			filled = pool.saversDepth / saverCap;
+		}
+
+
+		let { saversAPR, assetPriceUSD } = pools.find(p => p.asset === pool.asset);
+
+		const oldSaversReturn = calcSaverReturn(
+			sI[sI.length - 2].saversDepth,
+			sI[sI.length - 2].saversUnits,
+			sI[0].saversDepth,
+			sI[0].saversUnits,
+			7
+		)
+
+		saversPool[pool.asset] = {
+			savers: {
+				asset: pool.asset,
+				saversCount: +saversMeta.endSaversCount,
+				saversReturn: saversAPR,
+				earned: earned.meta.pools.find(p => p.pool === pool.asset).saverEarning,
+				filled,
+				assetPriceUSD,
+				saversDepth: +pool.saversDepth,
+				assetDepth: +pool.assetDepth,
+				...(synthSupply && { synthSupply })
+			},
+			oldSavers: {
+				saversDepth: +sI[sI.length - 2].saversDepth,
+				saversUnits: +sI[sI.length - 2].saversUnits,
+				saversCount: +sI[sI.length - 2].saversCount,
+				earned: earningsInterval[0].pools.find(p => p.pool === pool.asset).saverEarning,
+				saversReturn: oldSaversReturn
+			}
+		}
+
+	}
+
+	return saversPool;
+
 }
 
 module.exports = {
@@ -222,7 +296,8 @@ module.exports = {
 	dashboardPlots,
 	extraNodesInfo,
 	OHCLprice,
+	getSaversInfo,
 	getSaversExtra,
 	getOldSaversExtra,
 	chainsHeight
-};
+}

@@ -44,6 +44,10 @@ var data = {
 	oldSaversExtraData: {
 		fetcher: requests.getOldSaversExtra,
 		updateEvery: 6 * 60 * 60 /*every 6 hours*/
+	},
+	saversInfo: {
+		fetcher: requests.getSaversInfo,
+		updateEvery: 2 * 60 /*every 2 mins*/
 	}
 };
 
