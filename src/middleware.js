@@ -57,6 +57,9 @@ async function chainsHeight() {
 		}
 	}
 
+	const {data: heights} = await getRPCLastBlockHeight();	
+	maxChainHeights['THOR'] = +(heights?.block?.header?.height);
+
 	return maxChainHeights;
 }
 
