@@ -48,14 +48,34 @@ var data = {
 	saversInfo: {
 		fetcher: requests.getSaversInfo,
 		updateEvery: 2 * 60 /*every 2 mins*/
+	},
+	historyPools: {
+		fetcher: requests.getPoolsDVE,
+		updateEvery: 60 * 60,
+		params: {interval: 'day'},
+	},
+	historyPoolsWeek: {
+		fetcher: requests.getPoolsDVE,
+		updateEvery: 60 * 60,
+		params: {interval: 'week'},
+	},
+	historyPoolsMonth: {
+		fetcher: requests.getPoolsDVE,
+		updateEvery: 60 * 60,
+		params: {interval: 'month'},
+	},
+	historyPoolsYear: {
+		fetcher: requests.getPoolsDVE,
+		updateEvery: 60 * 60,
+		params: {interval: 'year'},
 	}
 };
 
 /* Update all the values at server init */
 setTimeout(async () => {
-	for (var key of Object.keys(data)) {
+	for (var objKey of Object.keys(data)) {
 		(() => {
-			var record = data[key];
+			var record = data[objKey];
 			record['lastUpdate'] = Date.now();
 
 			record
@@ -119,12 +139,12 @@ app.get('/api/:key', async (req, res) => {
 				}
 			}
 
-			var value = data[key].value;
-			// res.setHeader(
-			// 	'Cache-Control',
-			// 	's-maxage=60, stale-while-revalidate=119'
-			// );
-			res.json(value);
+			if (data[key].value) {
+				var value = data[key].value;
+				res.json(value);
+			} else {
+				res.status(503).json(null);
+			}
 		} else {
 			res.status(404).json({ msg: 'Static data Not found', key });
 		}

@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const axiosInstace = axios.create({
 	baseURL: endpoints[process.env.NETWORK].MIDGARD_BASE_URL,
-	timeout: 20000,
+	timeout: 30000,
 });
 
 const axiosRetry = require('axios-retry');
@@ -96,6 +96,18 @@ function getSaversHistory(interval='day', count='2', pool='BTC.BTC') {
 	return axiosInstace.get('history/savers/' + param);
 }
 
+function getDepthsHistory(interval='day', count='2', pool='BTC.BTC') {
+	const intervalParam = `interval=${interval}`;
+	const countParam = `count=${count}`;
+
+	let param = '';
+	if (interval && count) {
+		param = `${pool}?${intervalParam}&${countParam}`;
+	}
+
+	return axiosInstace.get('history/depths/' + param);
+}
+
 function getPoolVolume(poolName) {
 	return axiosInstace.get(
 		`history/liquidity_changes?pool=${poolName}&interval=day&count=30`
@@ -152,5 +164,6 @@ module.exports = {
 	earningsHistory,
 	getMidgardPools,
 	getEarnings,
-	getSaversHistory
+	getSaversHistory,
+	getDepthsHistory
 };

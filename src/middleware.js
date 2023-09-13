@@ -1,10 +1,31 @@
-const { getTxs, getStats, volumeHistory, swapHistory, tvlHistory, earningsHistory, getMidgardPools, getEarnings, getSaversHistory } = require('./midgard');
-const { getAddresses, getRPCLastBlockHeight, getSupplyRune, getLastBlockHeight, getNodes, getMimir, getAssets } = require('./thornode');
+const {
+	getTxs,
+	getStats,
+	volumeHistory,
+	swapHistory,
+	tvlHistory,
+	earningsHistory,
+	getMidgardPools,
+	getEarnings,
+	getSaversHistory,
+	getDepthsHistory,
+} = require('./midgard');
+const {
+	getAddresses,
+	getRPCLastBlockHeight,
+	getSupplyRune,
+	getLastBlockHeight,
+	getNodes,
+	getMimir,
+	getAssets,
+	getThorPools,
+} = require('./thornode');
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
 const axiosRetry = require('axios-retry');
 const chunk = require('lodash/chunk');
 const { endpoints } = require('../endpoints');
+const { zip, omit } = require('lodash');
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
@@ -18,7 +39,7 @@ async function dashboardPlots() {
 		LPChange,
 		swaps,
 		tvl,
-		earning
+		earning,
 	};
 }
 
@@ -37,7 +58,7 @@ async function dashboardData() {
 			blockHeight: blockHeight.data,
 			runeSupply: runeSupply.data,
 			lastBlockHeight: lastBlockHeight.data,
-			stats: stats.data
+			stats: stats.data,
 		};
 	} catch (e) {
 		console.error(e);
@@ -46,31 +67,39 @@ async function dashboardData() {
 
 async function chainsHeight() {
 	const { data: nodes } = await getNodes();
-	const nodeObservedChains = nodes.filter(n => n.status === 'Active').map(n => n.observe_chains);
+	const nodeObservedChains = nodes
+		.filter((n) => n.status === 'Active')
+		.map((n) => n.observe_chains);
 
 	let maxChainHeights = {};
 	for (const node of nodeObservedChains) {
 		for (const observedChain of node) {
-			if (!maxChainHeights.hasOwnProperty(observedChain['chain']) || observedChain['height'] >= maxChainHeights[observedChain['chain']]) {
+			if (
+				!maxChainHeights.hasOwnProperty(observedChain['chain']) ||
+        observedChain['height'] >= maxChainHeights[observedChain['chain']]
+			) {
 				maxChainHeights[observedChain['chain']] = observedChain['height'];
 			}
 		}
 	}
 
-	const {data: heights} = await getRPCLastBlockHeight();	
-	maxChainHeights['THOR'] = +(heights?.block?.header?.height);
+	const { data: heights } = await getRPCLastBlockHeight();
+	maxChainHeights['THOR'] = +heights?.block?.header?.height;
 
 	return maxChainHeights;
 }
 
 async function extraNodesInfo() {
 	const { data: nodes } = await getNodes();
-	const chunks = chunk(nodes.filter(n => n.ip_address).map(n => n.ip_address), 100);
+	const chunks = chunk(
+		nodes.filter((n) => n.ip_address).map((n) => n.ip_address),
+		100
+	);
 
 	let nodeInfo = {};
 	for (let ipchunk of chunks) {
 		let { data } = await axios.post('http://ip-api.com/batch', ipchunk);
-		data.forEach(d => {
+		data.forEach((d) => {
 			try {
 				nodeInfo[d.query] = d;
 			} catch (error) {
@@ -83,24 +112,31 @@ async function extraNodesInfo() {
 }
 
 async function OHCLprice() {
-	let { data } = await axios.get('https://node-api.flipsidecrypto.com/api/v2/queries/1aaa2137-b392-40a1-a9ce-22512f02d722/data/latest');
+	let { data } = await axios.get(
+		'https://node-api.flipsidecrypto.com/api/v2/queries/1aaa2137-b392-40a1-a9ce-22512f02d722/data/latest'
+	);
 
 	let chartData = [];
 
 	let lastDate = undefined;
 	let sameDay = [];
 
-	data.forEach(interval => {
+	data.forEach((interval) => {
 		let date = dayjs(interval.DATE);
 		if (!lastDate) {
 			lastDate = date;
 		}
 		if (date.isSame(lastDate, 'day')) {
 			sameDay.push({ date, price: interval.DAILY_RUNE_PRICE });
-		}
-		else {
-			let minPrice = Math.min.apply(Math, sameDay.map(d => d.price));
-			let maxPrice = Math.max.apply(Math, sameDay.map(d => d.price));
+		} else {
+			let minPrice = Math.min.apply(
+				Math,
+				sameDay.map((d) => d.price)
+			);
+			let maxPrice = Math.max.apply(
+				Math,
+				sameDay.map((d) => d.price)
+			);
 			let closePrice = sameDay[0].price;
 			let openPrice = sameDay[0].price;
 			let minM = sameDay[0].date;
@@ -124,13 +160,17 @@ async function OHCLprice() {
 			chartData.push({
 				date: dayjs(date).format('YY/MM/DD'),
 				prices: [openPrice, closePrice, minPrice, maxPrice],
-				volume: vol
+				volume: vol,
 			});
 
 			// add the new date
 			lastDate = undefined;
 			sameDay = [];
-			sameDay.push({ date, price: interval.DAILY_RUNE_PRICE, vol: interval.TOTAL_SWAP_VOLUME_USD });
+			sameDay.push({
+				date,
+				price: interval.DAILY_RUNE_PRICE,
+				vol: interval.TOTAL_SWAP_VOLUME_USD,
+			});
 		}
 	});
 
@@ -138,23 +178,35 @@ async function OHCLprice() {
 }
 
 const getSaversCount = async (pool, height) => {
-	let savers = (await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}` : ''))).data;
+	let savers = (
+		await axios.get(
+			`${
+				endpoints[process.env.NETWORK].V1_THORNODE
+			}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}` : '')
+		)
+	).data;
 	return savers.length;
 };
 
 const getPools = async (height) => {
-	let { data } = await axios.get(`${endpoints[process.env.NETWORK].THORNODE_URL}thorchain/pools` + (height ? `?height=${height}` : ''));
+	let { data } = await axios.get(
+		`${endpoints[process.env.NETWORK].THORNODE_URL}thorchain/pools` +
+      (height ? `?height=${height}` : '')
+	);
 	return data.filter((x) => x.status == 'Available');
 };
 
 const getOldPools = async (height) => {
-	let { data } = await axios.get(`${endpoints[process.env.NETWORK].V1_THORNODE}thorchain/pools` + (height ? `?height=${height}` : ''));
+	let { data } = await axios.get(
+		`${endpoints[process.env.NETWORK].V1_THORNODE}thorchain/pools` +
+      (height ? `?height=${height}` : '')
+	);
 	return data.filter((x) => x.status == 'Available');
 };
 
 const getOldSaversExtra = async () => {
 	const height = (await getRPCLastBlockHeight()).data.block.header.height;
-	const heightBefore = height - ((24 * 60 * 60) / 6);
+	const heightBefore = height - (24 * 60 * 60) / 6;
 	return await getSaversExtra(heightBefore);
 };
 
@@ -169,7 +221,7 @@ async function getSaversExtra(height) {
 	const pools = await getPools(height);
 	const midgardPools = (await getMidgardPools()).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
-	const heightWeekAgo = height - ((7 * 24 * 60 * 60) / 6);
+	const heightWeekAgo = height - (7 * 24 * 60 * 60) / 6;
 	const oldPools = await getOldPools(heightWeekAgo);
 
 	const synthSupplies = (await getAssets()).data.supply;
@@ -183,47 +235,60 @@ async function getSaversExtra(height) {
 			continue;
 		}
 
-		let oldPool = oldPools.find(p => p.asset === pool.asset);
+		let oldPool = oldPools.find((p) => p.asset === pool.asset);
 		if (!oldPool) continue;
 
 		let saverBeforeGrowth = oldPool.savers_depth / oldPool.savers_units;
 		let saverGrowth = pool.savers_depth / pool.savers_units;
-		let saverReturn = ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365 / 7);
+		let saverReturn =
+      ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365 / 7);
 
 		let saversCount = await getSaversCount(pool.asset, height);
 
 		let filled = 0;
 		let saverCap = ((2 * +synthCap) / 10e3) * pool.balance_asset;
-		let synthSupply = synthSupplies.find(a => a.denom === convertPoolNametoSynth(pool.asset))?.amount;
+		let synthSupply = synthSupplies.find(
+			(a) => a.denom === convertPoolNametoSynth(pool.asset)
+		)?.amount;
 		if (synthSupply) {
 			filled = synthSupply / saverCap;
-		}
-		else {
+		} else {
 			filled = pool.savers_depth / saverCap;
 		}
-		let assetPrice = midgardPools.find(p => p.asset === pool.asset).assetPriceUSD;
+		let assetPrice = midgardPools.find(
+			(p) => p.asset === pool.asset
+		).assetPriceUSD;
 
 		saversPool[pool.asset] = {
 			asset: pool.asset,
 			filled,
 			saversCount,
 			saverReturn,
-			earned: earned.meta.pools.find(p => p.pool === pool.asset).saverEarning,
-			deltaEarned: deltaEarned.meta.pools.find(p => p.pool === pool.asset).saverEarning,
+			earned: earned.meta.pools.find((p) => p.pool === pool.asset).saverEarning,
+			deltaEarned: deltaEarned.meta.pools.find((p) => p.pool === pool.asset)
+				.saverEarning,
 			assetPrice,
 			saversDepth: pool.savers_depth,
 			assetDepth: pool.balance_asset,
-			...(synthSupply && { synthSupply })
+			...(synthSupply && { synthSupply }),
 		};
 	}
 
 	return saversPool;
 }
 
-function calcSaverReturn(saversDepth, saversUnits, oldSaversDepth, oldSaversUnits, period) {
+function calcSaverReturn(
+	saversDepth,
+	saversUnits,
+	oldSaversDepth,
+	oldSaversUnits,
+	period
+) {
 	let saverBeforeGrowth = +oldSaversDepth / +oldSaversUnits;
 	let saverGrowth = +saversDepth / +saversUnits;
-	return ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (356 / period);
+	return (
+		((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (356 / period)
+	);
 }
 
 async function getSaversInfo(height) {
@@ -244,20 +309,24 @@ async function getSaversInfo(height) {
 			continue;
 		}
 
-		let { intervals: sI, meta: saversMeta } = (await getSaversHistory('day', '9', pool.asset)).data;
+		let { intervals: sI, meta: saversMeta } = (
+			await getSaversHistory('day', '9', pool.asset)
+		).data;
 
 		let filled = 0;
 		let saverCap = ((2 * +synthCap) / 10e3) * pool.assetDepth;
-		let synthSupply = synthSupplies.find(a => a.denom === convertPoolNametoSynth(pool.asset))?.amount;
+		let synthSupply = synthSupplies.find(
+			(a) => a.denom === convertPoolNametoSynth(pool.asset)
+		)?.amount;
 		if (synthSupply) {
 			filled = synthSupply / saverCap;
-		}
-		else {
+		} else {
 			filled = pool.saversDepth / saverCap;
 		}
 
-
-		let { saversAPR, assetPriceUSD } = pools.find(p => p.asset === pool.asset);
+		let { saversAPR, assetPriceUSD } = pools.find(
+			(p) => p.asset === pool.asset
+		);
 
 		const oldSaversReturn = calcSaverReturn(
 			sI[sI.length - 2].saversDepth,
@@ -265,33 +334,62 @@ async function getSaversInfo(height) {
 			sI[0].saversDepth,
 			sI[0].saversUnits,
 			7
-		)
+		);
 
 		saversPool[pool.asset] = {
 			savers: {
 				asset: pool.asset,
 				saversCount: +saversMeta.endSaversCount,
 				saversReturn: saversAPR,
-				earned: earned.meta.pools.find(p => p.pool === pool.asset).saverEarning,
+				earned: earned.meta.pools.find((p) => p.pool === pool.asset)
+					.saverEarning,
 				filled,
 				assetPriceUSD,
 				saversDepth: +pool.saversDepth,
 				assetDepth: +pool.assetDepth,
-				...(synthSupply && { synthSupply })
+				...(synthSupply && { synthSupply }),
 			},
 			oldSavers: {
 				saversDepth: +sI[sI.length - 2].saversDepth,
 				saversUnits: +sI[sI.length - 2].saversUnits,
 				saversCount: +sI[sI.length - 2].saversCount,
-				earned: earningsInterval[0].pools.find(p => p.pool === pool.asset).saverEarning,
-				saversReturn: oldSaversReturn
-			}
-		}
-
+				earned: earningsInterval[0].pools.find((p) => p.pool === pool.asset)
+					.saverEarning,
+				saversReturn: oldSaversReturn,
+			},
+		};
 	}
 
 	return saversPool;
+}
 
+async function getPoolsDVE() {
+	const poolRet = [];
+
+	try {
+		let TPools = (await getThorPools()).data.filter(
+			(p) => p.status === 'Available' && +p.savers_depth > 0
+		);
+	
+		let poolsEarnings = (await getEarnings(this.params.interval, 3)).data.intervals;
+		for (let i = 0; i < TPools.length; i++) {
+			const asset = TPools[i].asset;
+			const depthHis = (await getDepthsHistory(this.params.interval, '3', asset)).data;
+			const poolEarnings = poolsEarnings.map(e => e.pools.find(p => asset === p.pool));
+			poolRet.push({
+				asset,
+				interval: zip(depthHis.intervals, omit(poolEarnings, 'pool'))
+			});
+		}
+
+		return {
+			total: poolsEarnings.map(p => omit(p, 'pools')),
+			pools: poolRet
+		};
+
+	} catch (error) {
+		throw new error;
+	}
 }
 
 module.exports = {
@@ -302,5 +400,6 @@ module.exports = {
 	getSaversInfo,
 	getSaversExtra,
 	getOldSaversExtra,
-	chainsHeight
-}
+	chainsHeight,
+	getPoolsDVE,
+};

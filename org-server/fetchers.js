@@ -272,7 +272,8 @@ class Fetchers {
 			return null;
 		}
 	}
-	static async getVolume24H(){
+
+	static async getVolume24H() {
 		try{
 			var url = midgardBaseUrl + 'pools';
 			var res = await axios.get(url);
@@ -288,6 +289,7 @@ class Fetchers {
 			return null;
 		}
 	}
+
 	static async fetchTvlInUsd(totalActiveBond, totalStandbyBond) {
 		try {
 			var url = midgardBaseUrl + 'history/tvl';
@@ -303,7 +305,6 @@ class Fetchers {
 			return null;
 		}
 	}
-
 
 }
         

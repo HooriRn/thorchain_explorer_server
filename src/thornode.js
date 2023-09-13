@@ -121,5 +121,6 @@ module.exports = {
 	getLastBlockHeight,
 	getNodes,
 	getConstants,
-	getMimir
+	getMimir,
+	getThorPools
 };
