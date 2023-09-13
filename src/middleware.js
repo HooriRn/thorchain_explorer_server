@@ -374,11 +374,12 @@ async function getPoolsDVE() {
 		let poolsEarnings = (await getEarnings(this.params.interval, 3)).data.intervals;
 		for (let i = 0; i < TPools.length; i++) {
 			const asset = TPools[i].asset;
-			const depthHis = (await getDepthsHistory(this.params.interval, '3', asset)).data;
+			const depthHis = (await getDepthsHistory(this.params.interval, '3', asset)).data.intervals;
 			const poolEarnings = poolsEarnings.map(e => e.pools.find(p => asset === p.pool));
+			const intervals = poolEarnings.map((p, i) => ({...p, ...depthHis[i]}));
 			poolRet.push({
 				asset,
-				interval: zip(depthHis.intervals, omit(poolEarnings, 'pool'))
+				intervals
 			});
 		}
 
