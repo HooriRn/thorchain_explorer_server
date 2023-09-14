@@ -72,6 +72,19 @@ function swapHistory() {
 	return axiosInstace.get('history/swaps?interval=day&count=30');
 }
 
+function getPoolSwapHistory(pool = '', interval = '', count = '') {
+	const poolParam = `pool=${pool}`;
+	const intervalParam = `interval=${interval}`;
+	const countParam = `count=${count}`;
+
+	let param = '';
+	if (interval && count) {
+		param = `?${poolParam}&${intervalParam}&${countParam}`;
+	}
+
+	return axiosInstace.get('history/swaps' + param);
+}
+
 function tvlHistory() {
 	return axiosInstace.get('history/tvl?interval=day&count=30');
 }
@@ -165,5 +178,7 @@ module.exports = {
 	getMidgardPools,
 	getEarnings,
 	getSaversHistory,
-	getDepthsHistory
+	getDepthsHistory,
+	getPoolStats,
+	getPoolSwapHistory
 };

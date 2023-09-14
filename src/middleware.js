@@ -9,6 +9,7 @@ const {
 	getEarnings,
 	getSaversHistory,
 	getDepthsHistory,
+	getPoolSwapHistory
 } = require('./midgard');
 const {
 	getAddresses,
@@ -25,7 +26,7 @@ const { default: axios } = require('axios');
 const axiosRetry = require('axios-retry');
 const chunk = require('lodash/chunk');
 const { endpoints } = require('../endpoints');
-const { zip, omit } = require('lodash');
+const { omit } = require('lodash');
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
@@ -374,9 +375,15 @@ async function getPoolsDVE() {
 		let poolsEarnings = (await getEarnings(this.params.interval, this.params.count)).data.intervals;
 		for (let i = 0; i < TPools.length; i++) {
 			const asset = TPools[i].asset;
+			const poolSwapHistory = (await getPoolSwapHistory(asset, this.params.interval, this.params.count)).data.intervals;
 			const depthHis = (await getDepthsHistory(this.params.interval, this.params.count, asset)).data.intervals;
 			const poolEarnings = poolsEarnings.map(e => e.pools.find(p => asset === p.pool));
-			const intervals = poolEarnings.map((p, i) => ({...p, ...depthHis[i]}));
+			const intervals = poolEarnings.map((p, i) => ({
+				...p, ...depthHis[i], 
+				swapVolume: poolSwapHistory[i].totalVolume, 
+				swapFees: poolSwapHistory[i].totalFees,
+				swapCount: poolSwapHistory[i].totalCount
+			}));
 			poolRet.push({
 				asset,
 				intervals
@@ -389,6 +396,7 @@ async function getPoolsDVE() {
 		};
 
 	} catch (error) {
+		console.error(error);
 		throw new error;
 	}
 }
