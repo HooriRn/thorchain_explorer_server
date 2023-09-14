@@ -371,10 +371,10 @@ async function getPoolsDVE() {
 			(p) => p.status === 'Available' && +p.savers_depth > 0
 		);
 	
-		let poolsEarnings = (await getEarnings(this.params.interval, 3)).data.intervals;
+		let poolsEarnings = (await getEarnings(this.params.interval, this.params.count)).data.intervals;
 		for (let i = 0; i < TPools.length; i++) {
 			const asset = TPools[i].asset;
-			const depthHis = (await getDepthsHistory(this.params.interval, '3', asset)).data.intervals;
+			const depthHis = (await getDepthsHistory(this.params.interval, this.params.count, asset)).data.intervals;
 			const poolEarnings = poolsEarnings.map(e => e.pools.find(p => asset === p.pool));
 			const intervals = poolEarnings.map((p, i) => ({...p, ...depthHis[i]}));
 			poolRet.push({
