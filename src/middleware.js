@@ -8,8 +8,9 @@ const {
 	getMidgardPools,
 	getEarnings,
 	getSaversHistory,
-	getDepthsHistory,
-	getPoolSwapHistory
+	getEarningsParam,
+	getPoolSwapHistoryParam,
+	getDepthsHistoryParam
 } = require('./midgard');
 const {
 	getAddresses,
@@ -364,7 +365,34 @@ async function getSaversInfo(height) {
 	return saversPool;
 }
 
+function createFromToParam(from, to) {
+	return [
+		{
+			key: 'from',
+			value: from
+		},
+		{
+			key: 'to',
+			value: to
+		}
+	];
+}
+
+async function getOldPoolsDVE() {
+	let d = dayjs();
+	const to = d.subtract(1, this.params.interval).unix();
+	const from = d.subtract(2, this.params.interval).unix();
+	return getPoolsDVEPeriod(from, to);
+}
+
 async function getPoolsDVE() {
+	let d = dayjs();
+	const to = d.unix();
+	const from = d.subtract(1, this.params.interval).unix();
+	return getPoolsDVEPeriod(from, to);
+}
+
+async function getPoolsDVEPeriod(from, to) {
 	const poolRet = [];
 
 	try {
@@ -372,26 +400,26 @@ async function getPoolsDVE() {
 			(p) => p.status === 'Available' && +p.savers_depth > 0
 		);
 	
-		let poolsEarnings = (await getEarnings(this.params.interval, this.params.count)).data.intervals;
+		let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
 		for (let i = 0; i < TPools.length; i++) {
 			const asset = TPools[i].asset;
-			const poolSwapHistory = (await getPoolSwapHistory(asset, this.params.interval, this.params.count)).data.intervals;
-			const depthHis = (await getDepthsHistory(this.params.interval, this.params.count, asset)).data.intervals;
-			const poolEarnings = poolsEarnings.map(e => e.pools.find(p => asset === p.pool));
-			const intervals = poolEarnings.map((p, i) => ({
-				...p, ...depthHis[i], 
-				swapVolume: poolSwapHistory[i].totalVolume, 
-				swapFees: poolSwapHistory[i].totalFees,
-				swapCount: poolSwapHistory[i].totalCount
-			}));
+			const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
+			const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
+			const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
+			const intervals = {
+				...poolEarnings, 
+				...depthHis, 
+				swapVolume: poolSwapHistory.totalVolume, 
+				swapFees: poolSwapHistory.totalFees,
+				swapCount: poolSwapHistory.totalCount,
+			};
 			poolRet.push({
-				asset,
 				intervals
 			});
 		}
 
 		return {
-			total: poolsEarnings.map(p => omit(p, 'pools')),
+			total: omit(poolsEarnings, 'pools'),
 			pools: poolRet
 		};
 
@@ -411,4 +439,5 @@ module.exports = {
 	getOldSaversExtra,
 	chainsHeight,
 	getPoolsDVE,
+	getOldPoolsDVE
 };

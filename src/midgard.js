@@ -168,6 +168,26 @@ function getEarnings(interval, count) {
 	return axiosInstace.get('history/earnings' + param);
 }
 
+function buildParams(params) {
+	let strBuild = params.length > 0 ? '?':'';
+	for (let i = 0; i < params.length; i++) {
+		strBuild += (i === 0 ? `${params[i].key}=${params[i].value}` : `&${params[i].key}=${params[i].value}`);
+	}
+	return strBuild;
+}
+
+function getEarningsParam(params = []) {
+	return axiosInstace.get('history/earnings' + buildParams(params));
+}
+
+function getPoolSwapHistoryParam(params = []) {
+	return axiosInstace.get('history/swaps' + buildParams(params));
+}
+
+function getDepthsHistoryParam(pool = 'BTC.BTC', params = []) {
+	return axiosInstace.get(`history/depths/${pool}` + buildParams(params));
+}
+
 module.exports = {
 	getTxs,
 	getStats,
@@ -180,5 +200,8 @@ module.exports = {
 	getSaversHistory,
 	getDepthsHistory,
 	getPoolStats,
-	getPoolSwapHistory
+	getPoolSwapHistory,
+	getEarningsParam,
+	getPoolSwapHistoryParam,
+	getDepthsHistoryParam
 };

@@ -52,22 +52,42 @@ var data = {
 	historyPools: {
 		fetcher: requests.getPoolsDVE,
 		updateEvery: 60 * 60,
-		params: {interval: 'hour', count: 24},
+		params: {interval: 'day'},
 	},
 	historyPoolsWeek: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 60 * 60,
-		params: {interval: 'day', count: 7},
+		updateEvery: 2 * 60 * 60,
+		params: {interval: 'week'},
 	},
 	historyPoolsMonth: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 60 * 60,
-		params: {interval: 'day', count: 31},
+		updateEvery: 3 * 60 * 60,
+		params: {interval: 'month'},
 	},
 	historyPoolsYear: {
 		fetcher: requests.getPoolsDVE,
+		updateEvery: 4 * 60 * 60,
+		params: {interval: 'year'},
+	},
+	oldHistoryPools: {
+		fetcher: requests.getOldPoolsDVE,
 		updateEvery: 60 * 60,
-		params: {interval: 'week', count: 52},
+		params: {interval: 'day'},
+	},
+	oldHistoryPoolsWeek: {
+		fetcher: requests.getOldPoolsDVE,
+		updateEvery: 2 * 60 * 60,
+		params: {interval: 'week'},
+	},
+	OldHistoryPoolsMonth: {
+		fetcher: requests.getOldPoolsDVE,
+		updateEvery: 3 * 60 * 60,
+		params: {interval: 'month'},
+	},
+	oldHistoryPoolsYear: {
+		fetcher: requests.getOldPoolsDVE,
+		updateEvery: 4 * 60 * 60,
+		params: {interval: 'year'},
 	}
 };
 
