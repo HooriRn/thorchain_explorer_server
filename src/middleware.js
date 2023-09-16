@@ -238,12 +238,15 @@ async function getSaversExtra(height) {
 		}
 
 		let oldPool = oldPools.find((p) => p.asset === pool.asset);
-		if (!oldPool) continue;
 
-		let saverBeforeGrowth = oldPool.savers_depth / oldPool.savers_units;
-		let saverGrowth = pool.savers_depth / pool.savers_units;
-		let saverReturn =
-      ((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365 / 7);
+		let saverReturn = 0;
+		if (oldPool) {
+			let saverBeforeGrowth = oldPool.savers_depth / oldPool.savers_units;
+			let saverGrowth = pool.savers_depth / pool.savers_units;
+			saverReturn =
+				((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365 / 7);
+		}
+
 
 		let saversCount = await getSaversCount(pool.asset, height);
 
