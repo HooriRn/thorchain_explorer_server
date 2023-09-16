@@ -413,15 +413,12 @@ async function getPoolsDVEPeriod(from, to) {
 			const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
 			const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
 			const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
-			const intervals = {
+			poolRet.push({
 				...poolEarnings, 
 				...depthHis, 
 				swapVolume: poolSwapHistory.totalVolume, 
 				swapFees: poolSwapHistory.totalFees,
 				swapCount: poolSwapHistory.totalCount,
-			};
-			poolRet.push({
-				intervals
 			});
 
 			await wait(2000);
