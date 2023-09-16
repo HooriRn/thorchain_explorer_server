@@ -79,7 +79,7 @@ var data = {
 		updateEvery: 2 * 60 * 60,
 		params: {interval: 'week'},
 	},
-	OldHistoryPoolsMonth: {
+	oldHistoryPoolsMonth: {
 		fetcher: requests.getOldPoolsDVE,
 		updateEvery: 3 * 60 * 60,
 		params: {interval: 'month'},

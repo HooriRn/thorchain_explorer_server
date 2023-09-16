@@ -392,6 +392,10 @@ async function getPoolsDVE() {
 	return getPoolsDVEPeriod(from, to);
 }
 
+function wait(ms) {
+	return new Promise( (resolve) => {setTimeout(resolve, ms)});
+}
+
 async function getPoolsDVEPeriod(from, to) {
 	const poolRet = [];
 
@@ -416,6 +420,8 @@ async function getPoolsDVEPeriod(from, to) {
 			poolRet.push({
 				intervals
 			});
+
+			await wait(2000);
 		}
 
 		return {
