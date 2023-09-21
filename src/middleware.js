@@ -380,14 +380,14 @@ async function getOldPoolsDVE() {
 	let d = dayjs();
 	const to = d.subtract(1, this.params.interval).unix();
 	const from = d.subtract(2, this.params.interval).unix();
-	return getPoolsDVEPeriod(from, to);
+	return await getPoolsDVEPeriod(from, to);
 }
 
 async function getPoolsDVE() {
 	let d = dayjs();
 	const to = d.unix();
 	const from = d.subtract(1, this.params.interval).unix();
-	return getPoolsDVEPeriod(from, to);
+	return await getPoolsDVEPeriod(from, to);
 }
 
 function wait(ms) {
