@@ -1,4 +1,5 @@
 const dayjs = require('dayjs');
+const { setIntervalAsync } = require('set-interval-async/dynamic');
 // Constants
 require('dotenv').config();
 const PORT = process.env.PORT;
@@ -127,7 +128,7 @@ async function mainFunction() {
 }
 
 function startInterval () {
-	return setInterval(async () => {
+	return setIntervalAsync(async () => {
 		for (var name of Object.keys(actions)) {
 			var record = actions[name];
 	
