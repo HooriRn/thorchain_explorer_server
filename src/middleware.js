@@ -25,9 +25,8 @@ const {
 const dayjs = require('dayjs');
 const { default: axios } = require('axios');
 const axiosRetry = require('axios-retry');
-const chunk = require('lodash/chunk');
 const { endpoints } = require('../endpoints');
-const { omit } = require('lodash');
+const { omit, chunk } = require('lodash');
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
@@ -46,25 +45,21 @@ async function dashboardPlots() {
 }
 
 async function dashboardData() {
-	try {
-		const txs = await getTxs();
-		const addresses = await getAddresses();
-		const blockHeight = await getRPCLastBlockHeight();
-		const runeSupply = await getSupplyRune();
-		const lastBlockHeight = await getLastBlockHeight();
-		const stats = await getStats();
+	const txs = await getTxs();
+	const addresses = await getAddresses();
+	const blockHeight = await getRPCLastBlockHeight();
+	const runeSupply = await getSupplyRune();
+	const lastBlockHeight = await getLastBlockHeight();
+	const stats = await getStats();
 
-		return {
-			txs: txs.data,
-			addresses: addresses.data,
-			blockHeight: blockHeight.data,
-			runeSupply: runeSupply.data,
-			lastBlockHeight: lastBlockHeight.data,
-			stats: stats.data,
-		};
-	} catch (e) {
-		console.error(e);
-	}
+	return {
+		txs: txs.data,
+		addresses: addresses.data,
+		blockHeight: blockHeight.data,
+		runeSupply: runeSupply.data,
+		lastBlockHeight: lastBlockHeight.data,
+		stats: stats.data,
+	};
 }
 
 async function chainsHeight() {
@@ -396,43 +391,38 @@ async function getPoolsDVE() {
 }
 
 function wait(ms) {
-	return new Promise( (resolve) => {setTimeout(resolve, ms)});
+	return new Promise( (resolve) => {setTimeout(resolve, ms);});
 }
 
 async function getPoolsDVEPeriod(from, to) {
 	const poolRet = [];
 
-	try {
-		let TPools = (await getThorPools()).data.filter(
-			(p) => p.status === 'Available' && +p.savers_depth > 0
-		);
+	let TPools = (await getThorPools()).data.filter(
+		(p) => p.status === 'Available' && +p.savers_depth > 0
+	);
 	
-		let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
-		for (let i = 0; i < TPools.length; i++) {
-			const asset = TPools[i].asset;
-			const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
-			const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
-			const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
-			poolRet.push({
-				...poolEarnings, 
-				...depthHis, 
-				swapVolume: poolSwapHistory.totalVolume, 
-				swapFees: poolSwapHistory.totalFees,
-				swapCount: poolSwapHistory.totalCount,
-			});
+	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
+	for (let i = 0; i < TPools.length; i++) {
+		const asset = TPools[i].asset;
+		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
+		const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
+		const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
+		poolRet.push({
+			...poolEarnings, 
+			...depthHis, 
+			swapVolume: poolSwapHistory.totalVolume, 
+			swapFees: poolSwapHistory.totalFees,
+			swapCount: poolSwapHistory.totalCount,
+		});
 
-			await wait(2000);
-		}
-
-		return {
-			total: omit(poolsEarnings, 'pools'),
-			pools: poolRet
-		};
-
-	} catch (error) {
-		console.error(error);
-		throw new error;
+		await wait(2000);
 	}
+
+	return {
+		total: omit(poolsEarnings, 'pools'),
+		pools: poolRet
+	};
+
 }
 
 module.exports = {

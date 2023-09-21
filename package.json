@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "axios": "^0.27.2",
+    "axios-cache-interceptor": "^0.10.7",
     "axios-retry": "^3.4.0",
     "cors": "^2.8.5",
     "dayjs": "^1.11.4",

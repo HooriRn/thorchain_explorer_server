@@ -1,11 +1,16 @@
 /* eslint-disable no-unused-vars */
-const axios = require('axios');
+const Axios = require('axios');
 const { endpoints } = require('../endpoints');
 require('dotenv').config();
 
-const axiosInstace = axios.create({
+const axios = Axios.create({
 	baseURL: endpoints[process.env.NETWORK].THORNODE_URL,
 	timeout: 20000,
+});
+
+const { setupCache } = require('axios-cache-interceptor');
+const axiosInstace = setupCache(axios, {
+	ttl: 60 * 1e3
 });
 
 const axiosRetry = require('axios-retry');
