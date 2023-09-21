@@ -1,4 +1,3 @@
-const { assign } = require('lodash');
 const dayjs = require('dayjs');
 // Constants
 require('dotenv').config();
@@ -17,6 +16,10 @@ const corsOptions = {
 
 app.use(express.json());
 app.use(cors(corsOptions));
+
+function debugLogger(sb) {
+	console.log(`${dayjs().format()} - ${sb}`);
+}
 
 var actions = {
 	dashboardData: {
@@ -56,6 +59,11 @@ var actions = {
 		updateEvery: 2 * 60 * 60,
 		params: {interval: 'week'},
 	},
+	historyPools: {
+		fetcher: requests.getPoolsDVE,
+		updateEvery: 2 * 60 * 60,
+		params: {interval: 'day'},
+	},
 	historyPoolsMonth: {
 		fetcher: requests.getPoolsDVE,
 		updateEvery: 3 * 60 * 60,
@@ -92,7 +100,7 @@ async function updateAction(record, name) {
 	record['lastUpdate'] = Date.now();
 
 	try {
-		console.log('calling fetcher :', name);
+		debugLogger(`Calling fetcher: ${name}`);
 		const res = await record.fetcher();
 
 		actions[name] = {
@@ -114,7 +122,7 @@ async function mainFunction() {
 		await updateAction(record, name);
 	}
 
-	console.log('starting interval...');
+	debugLogger('Starting interval...');
 	startInterval();
 }
 
@@ -125,10 +133,10 @@ function startInterval () {
 	
 			/* update the record if it's the time */
 			if (Date.now() - record.lastUpdate >= record.updateEvery * 1000) {
-				console.log('asking for update', name);
+				debugLogger(`Asking for update ${name}`);
 				await updateAction(record, name);
 			} else if (record && record.err) {
-				console.log('update due to error', name);
+				debugLogger(`Update due to error ${name}`);
 				await updateAction(record, name);
 			}
 		}
