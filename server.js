@@ -55,15 +55,15 @@ var actions = {
 		fetcher: requests.getSaversInfo,
 		updateEvery: 2 * 60 /*every 2 mins*/
 	},
-	historyPoolsWeek: {
-		fetcher: requests.getPoolsDVE,
-		updateEvery: 2 * 60 * 60,
-		params: {interval: 'week'},
-	},
 	historyPools: {
 		fetcher: requests.getPoolsDVE,
 		updateEvery: 2 * 60 * 60,
 		params: {interval: 'day'},
+	},
+	historyPoolsWeek: {
+		fetcher: requests.getPoolsDVE,
+		updateEvery: 2 * 60 * 60,
+		params: {interval: 'week'},
 	},
 	historyPoolsMonth: {
 		fetcher: requests.getPoolsDVE,

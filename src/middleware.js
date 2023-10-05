@@ -23,6 +23,8 @@ const {
 	getThorPools,
 } = require('./thornode');
 const dayjs = require('dayjs');
+var utc = require('dayjs/plugin/utc');
+dayjs.extend(utc);
 const { default: axios } = require('axios');
 const axiosRetry = require('axios-retry');
 const { endpoints } = require('../endpoints');
@@ -377,14 +379,14 @@ function createFromToParam(from, to) {
 }
 
 async function getOldPoolsDVE() {
-	let d = dayjs();
+	let d = dayjs().utc().startOf('day');
 	const to = d.subtract(1, this.params.interval).unix();
 	const from = d.subtract(2, this.params.interval).unix();
 	return await getPoolsDVEPeriod(from, to);
 }
 
 async function getPoolsDVE() {
-	let d = dayjs();
+	let d = dayjs().utc().startOf('day');
 	const to = d.unix();
 	const from = d.subtract(1, this.params.interval).unix();
 	return await getPoolsDVEPeriod(from, to);
@@ -398,7 +400,7 @@ async function getPoolsDVEPeriod(from, to) {
 	const poolRet = [];
 
 	let TPools = (await getThorPools()).data.filter(
-		(p) => p.status === 'Available' && +p.savers_depth > 0
+		(p) => p.status === 'Available'
 	);
 	
 	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
@@ -413,6 +415,7 @@ async function getPoolsDVEPeriod(from, to) {
 			swapVolume: poolSwapHistory.totalVolume, 
 			swapFees: poolSwapHistory.totalFees,
 			swapCount: poolSwapHistory.totalCount,
+			timestamp: to
 		});
 
 		await wait(2000);
