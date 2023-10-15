@@ -29,7 +29,7 @@ var actions = {
 	},
 	dashboardPlots: {
 		fetcher: requests.dashboardPlots,
-		updateEvery: 120 /*seconds*/,
+		updateEvery: 2 * 60 /*seconds*/,
 	},
 	extraNodesInfo: {
 		fetcher: requests.extraNodesInfo,
@@ -41,19 +41,11 @@ var actions = {
 	},
 	ohclPrice: {
 		fetcher: requests.OHCLprice,
-		updateEvery: 60 /*seconds*/
-	},
-	saversExtraData: {
-		fetcher: requests.getSaversExtra,
-		updateEvery: 60 /*seconds*/
-	},
-	oldSaversExtraData: {
-		fetcher: requests.getOldSaversExtra,
-		updateEvery: 6 * 60 * 60 /*every 6 hours*/
+		updateEvery: 60 * 60 /*seconds*/
 	},
 	saversInfo: {
 		fetcher: requests.getSaversInfo,
-		updateEvery: 2 * 60 /*every 2 mins*/
+		updateEvery: 60 * 60 /*every hour*/
 	},
 	historyPools: {
 		fetcher: requests.getPoolsDVE,

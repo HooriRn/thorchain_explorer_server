@@ -27,7 +27,6 @@ var utc = require('dayjs/plugin/utc');
 dayjs.extend(utc);
 const { default: axios } = require('axios');
 const axiosRetry = require('axios-retry');
-const { endpoints } = require('../endpoints');
 const { omit, chunk } = require('lodash');
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
@@ -176,108 +175,9 @@ async function OHCLprice() {
 	return chartData;
 }
 
-const getSaversCount = async (pool, height) => {
-	let savers = (
-		await axios.get(
-			`${
-				endpoints[process.env.NETWORK].V1_THORNODE
-			}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}` : '')
-		)
-	).data;
-	return savers.length;
-};
-
-const getPools = async (height) => {
-	let { data } = await axios.get(
-		`${endpoints[process.env.NETWORK].THORNODE_URL}thorchain/pools` +
-      (height ? `?height=${height}` : '')
-	);
-	return data.filter((x) => x.status == 'Available');
-};
-
-const getOldPools = async (height) => {
-	let { data } = await axios.get(
-		`${endpoints[process.env.NETWORK].V1_THORNODE}thorchain/pools` +
-      (height ? `?height=${height}` : '')
-	);
-	return data.filter((x) => x.status == 'Available');
-};
-
-const getOldSaversExtra = async () => {
-	const height = (await getRPCLastBlockHeight()).data.block.header.height;
-	const heightBefore = height - (24 * 60 * 60) / 6;
-	return await getSaversExtra(heightBefore);
-};
-
 const convertPoolNametoSynth = (poolName) => {
 	return poolName.toLowerCase().replace('.', '/');
 };
-
-async function getSaversExtra(height) {
-	if (!height)
-		height = (await getRPCLastBlockHeight()).data.block.header.height;
-
-	const pools = await getPools(height);
-	const midgardPools = (await getMidgardPools()).data;
-	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
-	const heightWeekAgo = height - (7 * 24 * 60 * 60) / 6;
-	const oldPools = await getOldPools(heightWeekAgo);
-
-	const synthSupplies = (await getAssets()).data.supply;
-
-	const earned = (await getEarnings()).data;
-	const deltaEarned = (await getEarnings('day', '1')).data;
-
-	const saversPool = {};
-	for (let pool of pools) {
-		if (pool.savers_depth == 0) {
-			continue;
-		}
-
-		let oldPool = oldPools.find((p) => p.asset === pool.asset);
-
-		let saverReturn = 0;
-		if (oldPool) {
-			let saverBeforeGrowth = oldPool.savers_depth / oldPool.savers_units;
-			let saverGrowth = pool.savers_depth / pool.savers_units;
-			saverReturn =
-				((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365 / 7);
-		}
-
-
-		let saversCount = await getSaversCount(pool.asset, height);
-
-		let filled = 0;
-		let saverCap = ((2 * +synthCap) / 10e3) * pool.balance_asset;
-		let synthSupply = synthSupplies.find(
-			(a) => a.denom === convertPoolNametoSynth(pool.asset)
-		)?.amount;
-		if (synthSupply) {
-			filled = synthSupply / saverCap;
-		} else {
-			filled = pool.savers_depth / saverCap;
-		}
-		let assetPrice = midgardPools.find(
-			(p) => p.asset === pool.asset
-		).assetPriceUSD;
-
-		saversPool[pool.asset] = {
-			asset: pool.asset,
-			filled,
-			saversCount,
-			saverReturn,
-			earned: earned.meta.pools.find((p) => p.pool === pool.asset).saverEarning,
-			deltaEarned: deltaEarned.meta.pools.find((p) => p.pool === pool.asset)
-				.saverEarning,
-			assetPrice,
-			saversDepth: pool.savers_depth,
-			assetDepth: pool.balance_asset,
-			...(synthSupply && { synthSupply }),
-		};
-	}
-
-	return saversPool;
-}
 
 function calcSaverReturn(
 	saversDepth,
@@ -293,15 +193,11 @@ function calcSaverReturn(
 	);
 }
 
-async function getSaversInfo(height) {
-	if (!height)
-		height = (await getRPCLastBlockHeight()).data.block.header.height;
+async function getSaversInfo() {
 
 	const pools = (await getMidgardPools('7d')).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
-
 	const synthSupplies = (await getAssets()).data.supply;
-
 	const earned = (await getEarnings()).data;
 	const { intervals: earningsInterval } = (await getEarnings('day', '2')).data;
 
@@ -434,8 +330,6 @@ module.exports = {
 	extraNodesInfo,
 	OHCLprice,
 	getSaversInfo,
-	getSaversExtra,
-	getOldSaversExtra,
 	chainsHeight,
 	getPoolsDVE,
 	getOldPoolsDVE

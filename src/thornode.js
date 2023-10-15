@@ -3,19 +3,19 @@ const Axios = require('axios');
 const { endpoints } = require('../endpoints');
 require('dotenv').config();
 
+// Axios configs
 const axios = Axios.create({
 	baseURL: endpoints[process.env.NETWORK].THORNODE_URL,
 	timeout: 20000,
 });
 
 const { setupCache } = require('axios-cache-interceptor');
-const axiosInstace = setupCache(axios, {
-	ttl: 60 * 1e3
-});
+var axiosInstace = setupCache(axios);
 
 const axiosRetry = require('axios-retry');
 axiosRetry(axiosInstace, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
+// Requests
 function getMimir() {
 	return axiosInstace.get('thorchain/mimir');
 }
@@ -80,8 +80,8 @@ function getSupplyRune() {
 	);
 }
 
-function getThorPools() {
-	return axiosInstace.get('thorchain/pools');
+function getThorPools(height) {
+	return axiosInstace.get('thorchain/pools' + (height ? `?height=${height}` : ''));
 }
 
 function getYggdrasil() {
