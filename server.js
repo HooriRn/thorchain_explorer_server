@@ -25,27 +25,27 @@ function debugLogger(sb) {
 var actions = {
 	dashboardData: {
 		fetcher: requests.dashboardData,
-		updateEvery: 30 /*seconds*/,
+		updateEvery: 30,
 	},
 	dashboardPlots: {
 		fetcher: requests.dashboardPlots,
-		updateEvery: 2 * 60 /*seconds*/,
+		updateEvery: 60 * 60
 	},
 	extraNodesInfo: {
 		fetcher: requests.extraNodesInfo,
-		updateEvery: 20 /*seconds*/
+		updateEvery: 20
 	},
 	chainsHeight: {
 		fetcher: requests.chainsHeight,
-		updateEvery: 30 /*seconds*/
+		updateEvery: 30
 	},
 	ohclPrice: {
 		fetcher: requests.OHCLprice,
-		updateEvery: 60 * 60 /*seconds*/
+		updateEvery: 60 * 60
 	},
 	saversInfo: {
 		fetcher: requests.getSaversInfo,
-		updateEvery: 60 * 60 /*every hour*/
+		updateEvery: 60 * 60
 	},
 	historyPools: {
 		fetcher: requests.getPoolsDVE,
@@ -104,6 +104,7 @@ async function updateAction(record, name) {
 	} catch (e) {
 		actions[name].err = e;
 
+		console.log(e.response.headers);
 		console.error(`${dayjs().format()} - Error occured in -- ${name} -- ${e.response?.statusText ?? e.response}`);
 	}
 }

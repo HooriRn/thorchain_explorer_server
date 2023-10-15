@@ -27,11 +27,25 @@ function getBalance(address) {
 }
 
 function getLastBlockHeight() {
-	return axiosInstace.get('thorchain/lastblock');
+	return axiosInstace.get(
+		'thorchain/lastblock',
+		{
+			cache: {
+				ttl: 1000
+			}
+		}
+	);
 }
 
 function getRPCLastBlockHeight() {
-	return axiosInstace.get('blocks/latest');
+	return axiosInstace.get(
+		'blocks/latest',
+		{
+			cache: {
+				ttl: 1000
+			}
+		}
+	);
 }
 
 function getNativeTx(txID) {
@@ -108,7 +122,12 @@ function getOutbound() {
 
 function getNodes() {
 	return axiosInstace.get(
-		'thorchain/nodes'
+		'thorchain/nodes',
+		{
+			cache: {
+				ttl: 1000 * 30
+			}
+		}
 	);
 }
 
