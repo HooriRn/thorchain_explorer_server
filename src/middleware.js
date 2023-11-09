@@ -256,6 +256,8 @@ async function getSaversInfo() {
 				saversReturn: oldSaversReturn,
 			},
 		};
+
+		await wait(2000);
 	}
 
 	return saversPool;
@@ -299,11 +301,17 @@ async function getPoolsDVEPeriod(from, to) {
 		(p) => p.status === 'Available'
 	);
 	
+	await wait(3000);
 	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
+	console.log('Got earnings...')
 	for (let i = 0; i < TPools.length; i++) {
 		const asset = TPools[i].asset;
 		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
+		console.log('Got swap history...', asset)
+		await wait(2000);
 		const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
+		console.log('Got depth history...', asset)
+		await wait(2000);
 		const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
 		poolRet.push({
 			...poolEarnings, 
@@ -313,8 +321,6 @@ async function getPoolsDVEPeriod(from, to) {
 			swapCount: poolSwapHistory.totalCount,
 			timestamp: to
 		});
-
-		await wait(2000);
 	}
 
 	return {
@@ -332,5 +338,6 @@ module.exports = {
 	getSaversInfo,
 	chainsHeight,
 	getPoolsDVE,
-	getOldPoolsDVE
+	getOldPoolsDVE,
+	wait
 };

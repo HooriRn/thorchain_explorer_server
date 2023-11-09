@@ -9,6 +9,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@flipsidecrypto/sdk": "^2.0.0",
     "axios": "^0.27.2",
     "axios-cache-interceptor": "^0.10.7",
     "axios-retry": "^3.4.0",

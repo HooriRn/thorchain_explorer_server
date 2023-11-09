@@ -104,7 +104,6 @@ async function updateAction(record, name) {
 	} catch (e) {
 		actions[name].err = e;
 
-		console.log(e.response.headers);
 		console.error(`${dayjs().format()} - Error occured in -- ${name} -- ${e.response?.statusText ?? e.response}`);
 	}
 }
@@ -114,6 +113,7 @@ async function mainFunction() {
 	for (var name of Object.keys(actions)) {
 		var record = actions[name];
 		await updateAction(record, name);
+		await requests.wait(1000);
 	}
 
 	debugLogger('Starting interval...');
