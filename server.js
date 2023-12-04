@@ -11,6 +11,10 @@ const cors = require('cors');
 
 const requests = require('./src/middleware');
 
+// Init storage
+const Storage = require('node-storage');
+var store = new Storage('./storage/main');
+
 const corsOptions = {
 	origin: '*',
 };
@@ -89,31 +93,57 @@ var actions = {
 	}
 };
 
-async function updateAction(record, name) {
-	record['lastUpdate'] = Date.now();
+async function updateAction(name) {
+	if (!actions[name]) {
+		return
+	}
+
+	actions[name]['lastUpdate'] = Date.now();
 
 	try {
 		debugLogger(`Calling fetcher: ${name}`);
-		const res = await record.fetcher();
+		const res = await actions[name].fetcher();
 
 		actions[name] = {
 			...actions[name],
 			value: res,
 			err: null
 		};
+
+		store.put(name, {value: res, lastUpdate: actions[name]['lastUpdate']});
 	} catch (e) {
 		actions[name].err = e;
-
 		console.error(`${dayjs().format()} - Error occured in -- ${name} -- ${e.response?.statusText ?? e.response}`);
 	}
 }
 
+function initActionsFromStorage() {
+	for (var name of Object.keys(actions)) {
+		const v = store.get(name)
+		if (v && v.value) {
+			var res = store.get(name);
+
+			// Update actions from node storage
+			actions[name].value = res.value;
+			actions[name].lastUpdate = res.lastUpdate;
+			actions[name].err = null;
+		}
+	}
+}
+
+function shouldBeUpdated(record) {
+	return Date.now() - record.lastUpdate >= record.updateEvery * 1000
+}
+
 /* Update all the values at server init */
 async function mainFunction() {
+	initActionsFromStorage()
+	
 	for (var name of Object.keys(actions)) {
-		var record = actions[name];
-		await updateAction(record, name);
-		await requests.wait(1000);
+		if (shouldBeUpdated(actions[name])) {
+			await updateAction(name);
+			await requests.wait(1000);
+		}
 	}
 
 	debugLogger('Starting interval...');
@@ -126,12 +156,12 @@ function startInterval () {
 			var record = actions[name];
 	
 			/* update the record if it's the time */
-			if (Date.now() - record.lastUpdate >= record.updateEvery * 1000) {
+			if (shouldBeUpdated(record)) {
 				debugLogger(`Asking for update ${name}`);
-				await updateAction(record, name);
+				await updateAction(name);
 			} else if (record && record.err) {
 				debugLogger(`Update due to error ${name}`);
-				await updateAction(record, name);
+				await updateAction(name);
 			}
 		}
 	}, 30 * 1e3);
