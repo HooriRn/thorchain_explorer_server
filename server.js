@@ -95,7 +95,7 @@ var actions = {
 
 async function updateAction(name) {
 	if (!actions[name]) {
-		return
+		return;
 	}
 
 	actions[name]['lastUpdate'] = Date.now();
@@ -119,7 +119,7 @@ async function updateAction(name) {
 
 function initActionsFromStorage() {
 	for (var name of Object.keys(actions)) {
-		const v = store.get(name)
+		const v = store.get(name);
 		if (v && v.value) {
 			var res = store.get(name);
 
@@ -132,12 +132,15 @@ function initActionsFromStorage() {
 }
 
 function shouldBeUpdated(record) {
-	return Date.now() - record.lastUpdate >= record.updateEvery * 1000
+	if (!record.value || !record.lastUpdate) {
+		return true;
+	}
+	return Date.now() - record.lastUpdate >= record.updateEvery * 1000;
 }
 
 /* Update all the values at server init */
 async function mainFunction() {
-	initActionsFromStorage()
+	initActionsFromStorage();
 	
 	for (var name of Object.keys(actions)) {
 		if (shouldBeUpdated(actions[name])) {
