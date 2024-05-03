@@ -43,8 +43,16 @@ var actions = {
 		fetcher: requests.chainsHeight,
 		updateEvery: 30
 	},
-	ohclPrice: {
-		fetcher: requests.OHCLprice,
+	runePrice: {
+		fetcher: requests.RunePrice,
+		updateEvery: 60 * 60
+	},
+	tvlHistoryQuery: {
+		fetcher: requests.TVLHistoryQuery,
+		updateEvery: 60 * 60
+	},
+	churnHistory: {
+		fetcher: requests.ChurnHistoryQuery,
 		updateEvery: 60 * 60
 	},
 	saversInfo: {
