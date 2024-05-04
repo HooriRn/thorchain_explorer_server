@@ -32,10 +32,10 @@ const { omit, chunk } = require('lodash');
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 require('dotenv').config();
-const { Flipside } = require("@flipsidecrypto/sdk");
+const { Flipside } = require('@flipsidecrypto/sdk');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
-	"https://api-v2.flipsidecrypto.xyz"
+	'https://api-v2.flipsidecrypto.xyz'
 );
 
 async function dashboardPlots() {
@@ -122,7 +122,7 @@ async function RunePrice() {
 	rdp AS (SELECT day as date, (((total_value_pooled_usd * 3/2) + total_value_bonded_usd) / 500000000)  AS deterministic_rune_price FROM thorchain.defi.fact_daily_tvl ORDER BY date),
 	rp AS (SELECT time_slice(block_timestamp, 1, 'HOUR', 'START') as date, avg(price_asset_rune) as daily_rune_price from thorchain.price.fact_prices where pool_name='BNB.BUSD-BD1' group by date order by date)
 	SELECT c.date, daily_rune_price, deterministic_rune_price from rdp as c inner join rp as e on c.date = e.date order by date
-	`
+	`;
 
 	let data = await flipside.query.run({sql: sql});
 
@@ -132,7 +132,7 @@ async function RunePrice() {
 async function TVLHistoryQuery() {
 	let sql = `
 	SELECT DAY, TOTAL_VALUE_POOLED, TOTAL_VALUE_BONDED, TOTAL_VALUE_LOCKED FROM thorchain.defi.fact_daily_tvl ORDER BY DAY DESC;
-	`
+	`;
 
 	let data = await flipside.query.run({sql: sql});
 
@@ -155,7 +155,7 @@ async function ChurnHistoryQuery() {
 	  ROUND((1/24) * DATEDIFF(hour, LAG(block_timestamp) OVER(ORDER BY block_id ASC), block_timestamp)) AS days_since_last_churn
 	FROM (churn_blocks INNER JOIN dim_convert ON churn_blocks.dim_block_id = dim_convert.dim_block_id)
 	ORDER BY block_timestamp DESC
-	`
+	`;
 
 	let data = await flipside.query.run({sql: sql});
 
@@ -170,7 +170,7 @@ async function SwapCountQuery() {
 		unique_swapers
 		FROM swaps as a)
 	SELECT * FROM culmulative ORDER BY date
-	`
+	`;
 
 	let data = await flipside.query.run({sql: sql});
 
@@ -305,14 +305,14 @@ async function getPoolsDVEPeriod(from, to) {
 	
 	await wait(3000);
 	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
-	console.log('Got earnings...')
+	console.log('Got earnings...');
 	for (let i = 0; i < TPools.length; i++) {
 		const asset = TPools[i].asset;
 		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
-		console.log('Got swap history...', asset)
+		console.log('Got swap history...', asset);
 		await wait(2000);
 		const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
-		console.log('Got depth history...', asset)
+		console.log('Got depth history...', asset);
 		await wait(2000);
 		const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
 		poolRet.push({
