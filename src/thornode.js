@@ -3,19 +3,19 @@ const Axios = require('axios');
 const { endpoints } = require('../endpoints');
 require('dotenv').config();
 
+// Axios configs
 const axios = Axios.create({
 	baseURL: endpoints[process.env.NETWORK].THORNODE_URL,
 	timeout: 20000,
 });
 
 const { setupCache } = require('axios-cache-interceptor');
-const axiosInstace = setupCache(axios, {
-	ttl: 60 * 1e3
-});
+var axiosInstace = setupCache(axios);
 
 const axiosRetry = require('axios-retry');
 axiosRetry(axiosInstace, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
+// Requests
 function getMimir() {
 	return axiosInstace.get('thorchain/mimir');
 }
@@ -27,11 +27,25 @@ function getBalance(address) {
 }
 
 function getLastBlockHeight() {
-	return axiosInstace.get('thorchain/lastblock');
+	return axiosInstace.get(
+		'thorchain/lastblock',
+		{
+			cache: {
+				ttl: 1000
+			}
+		}
+	);
 }
 
 function getRPCLastBlockHeight() {
-	return axiosInstace.get('blocks/latest');
+	return axiosInstace.get(
+		'blocks/latest',
+		{
+			cache: {
+				ttl: 1000
+			}
+		}
+	);
 }
 
 function getNativeTx(txID) {
@@ -80,8 +94,8 @@ function getSupplyRune() {
 	);
 }
 
-function getThorPools() {
-	return axiosInstace.get('thorchain/pools');
+function getThorPools(height) {
+	return axiosInstace.get('thorchain/pools' + (height ? `?height=${height}` : ''));
 }
 
 function getYggdrasil() {
@@ -108,7 +122,12 @@ function getOutbound() {
 
 function getNodes() {
 	return axiosInstace.get(
-		'thorchain/nodes'
+		'thorchain/nodes',
+		{
+			cache: {
+				ttl: 1000 * 30
+			}
+		}
 	);
 }
 
@@ -127,5 +146,6 @@ module.exports = {
 	getNodes,
 	getConstants,
 	getMimir,
-	getThorPools
+	getThorPools,
+	getLpPositions
 };

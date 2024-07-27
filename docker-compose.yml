@@ -31,20 +31,6 @@ services:
       - PORT=9000
       - NETWORK=stagenet
 
-  org_server:
-    build:
-      context: ./org-server
-      dockerfile: Dockerfile
-    image: org_nodejs
-    container_name: org_nodejs
-    restart: unless-stopped
-    networks:
-      - app-network
-    ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-
   webserver:
     image: nginx:mainline-alpine
     container_name: webserver

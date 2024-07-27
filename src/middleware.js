@@ -9,8 +9,10 @@ const {
 	getEarnings,
 	getSaversHistory,
 	getEarningsParam,
+	getPools,
 	getPoolSwapHistoryParam,
-	getDepthsHistoryParam
+	getDepthsHistoryParam,
+	getMemberDetails
 } = require('./midgard');
 const {
 	getAddresses,
@@ -21,16 +23,24 @@ const {
 	getMimir,
 	getAssets,
 	getThorPools,
+	getLpPositions
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
 dayjs.extend(utc);
 const { default: axios } = require('axios');
 const axiosRetry = require('axios-retry');
-const { endpoints } = require('../endpoints');
 const { omit, chunk } = require('lodash');
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
+
+require('dotenv').config();
+const { Flipside } = require('@flipsidecrypto/sdk');
+const { modules } = require('../endpoints');
+const flipside = new Flipside(
+	process.env.FLIP_KEY,
+	'https://api-v2.flipsidecrypto.xyz'
+);
 
 async function dashboardPlots() {
 	const { data: LPChange } = await volumeHistory();
@@ -75,7 +85,7 @@ async function chainsHeight() {
 		for (const observedChain of node) {
 			if (
 				!maxChainHeights.hasOwnProperty(observedChain['chain']) ||
-        observedChain['height'] >= maxChainHeights[observedChain['chain']]
+				observedChain['height'] >= maxChainHeights[observedChain['chain']]
 			) {
 				maxChainHeights[observedChain['chain']] = observedChain['height'];
 			}
@@ -110,174 +120,70 @@ async function extraNodesInfo() {
 	return nodeInfo;
 }
 
-async function OHCLprice() {
-	let { data } = await axios.get(
-		'https://node-api.flipsidecrypto.com/api/v2/queries/1aaa2137-b392-40a1-a9ce-22512f02d722/data/latest'
-	);
+async function RunePrice() {
+	let sql = `
+	with 
+	rdp AS (SELECT day as date, (((total_value_pooled_usd * 3/2) + total_value_bonded_usd) / 500000000)  AS deterministic_rune_price FROM thorchain.defi.fact_daily_tvl ORDER BY date),
+	rp AS (SELECT time_slice(block_timestamp, 1, 'HOUR', 'START') as date, avg(price_asset_rune) as daily_rune_price from thorchain.price.fact_prices where pool_name='BNB.BUSD-BD1' group by date order by date)
+	SELECT c.date, daily_rune_price, deterministic_rune_price from rdp as c inner join rp as e on c.date = e.date order by date
+	`;
 
-	let chartData = [];
+	let data = await flipside.query.run({ sql: sql });
 
-	let lastDate = undefined;
-	let sameDay = [];
-
-	data.forEach((interval) => {
-		let date = dayjs(interval.DATE);
-		if (!lastDate) {
-			lastDate = date;
-		}
-		if (date.isSame(lastDate, 'day')) {
-			sameDay.push({ date, price: interval.DAILY_RUNE_PRICE });
-		} else {
-			let minPrice = Math.min.apply(
-				Math,
-				sameDay.map((d) => d.price)
-			);
-			let maxPrice = Math.max.apply(
-				Math,
-				sameDay.map((d) => d.price)
-			);
-			let closePrice = sameDay[0].price;
-			let openPrice = sameDay[0].price;
-			let minM = sameDay[0].date;
-			let maxM = sameDay[0].date;
-			let vol = 0;
-
-			sameDay.forEach((d) => {
-				if (d.date.isBefore(minM)) {
-					minM = d.date;
-					openPrice = d.price;
-				}
-				if (d.date.isAfter(maxM)) {
-					maxM = d.date;
-					closePrice = d.price;
-				}
-				if (d.vol) {
-					vol = d.vol;
-				}
-			});
-
-			chartData.push({
-				date: dayjs(date).format('YY/MM/DD'),
-				prices: [openPrice, closePrice, minPrice, maxPrice],
-				volume: vol,
-			});
-
-			// add the new date
-			lastDate = undefined;
-			sameDay = [];
-			sameDay.push({
-				date,
-				price: interval.DAILY_RUNE_PRICE,
-				vol: interval.TOTAL_SWAP_VOLUME_USD,
-			});
-		}
-	});
-
-	return chartData;
+	return data.records;
 }
 
-const getSaversCount = async (pool, height) => {
-	let savers = (
-		await axios.get(
-			`${
-				endpoints[process.env.NETWORK].V1_THORNODE
-			}/thorchain/pool/${pool}/savers` + (height ? `?height=${height}` : '')
-		)
-	).data;
-	return savers.length;
-};
+async function TVLHistoryQuery() {
+	let sql = `
+	SELECT DAY, TOTAL_VALUE_POOLED, TOTAL_VALUE_BONDED, TOTAL_VALUE_LOCKED FROM thorchain.defi.fact_daily_tvl ORDER BY DAY DESC;
+	`;
 
-const getPools = async (height) => {
-	let { data } = await axios.get(
-		`${endpoints[process.env.NETWORK].THORNODE_URL}thorchain/pools` +
-      (height ? `?height=${height}` : '')
-	);
-	return data.filter((x) => x.status == 'Available');
-};
+	let data = await flipside.query.run({ sql: sql });
 
-const getOldPools = async (height) => {
-	let { data } = await axios.get(
-		`${endpoints[process.env.NETWORK].V1_THORNODE}thorchain/pools` +
-      (height ? `?height=${height}` : '')
-	);
-	return data.filter((x) => x.status == 'Available');
-};
+	return data.records;
+}
 
-const getOldSaversExtra = async () => {
-	const height = (await getRPCLastBlockHeight()).data.block.header.height;
-	const heightBefore = height - (24 * 60 * 60) / 6;
-	return await getSaversExtra(heightBefore);
-};
+async function ChurnHistoryQuery() {
+	let sql = `
+	WITH
+	churn_blocks AS
+	(
+		SELECT DISTINCT block_timestamp, dim_block_id
+		  FROM thorchain.defi.fact_update_node_account_status_events
+	)
+	, dim_convert AS (
+	  SELECT dim_block_id, block_id
+	  FROM thorchain.core.dim_block
+	)
+	SELECT block_timestamp, block_id,
+	  ROUND((1/24) * DATEDIFF(hour, LAG(block_timestamp) OVER(ORDER BY block_id ASC), block_timestamp)) AS days_since_last_churn
+	FROM (churn_blocks INNER JOIN dim_convert ON churn_blocks.dim_block_id = dim_convert.dim_block_id)
+	ORDER BY block_timestamp DESC
+	`;
+
+	let data = await flipside.query.run({ sql: sql });
+
+	return data.records;
+}
+
+async function SwapCountQuery() {
+	let sql = `
+	WITH swaps AS (SELECT day as date, SUM(swap_count) as swap_count, SUM(unique_swapper_count) as unique_swapers, ROW_NUMBER() OVER (ORDER BY date) as rownum FROM thorchain.defi.fact_daily_pool_stats Group BY day),
+	culmulative AS (SELECT date, (SELECT SUM(swap_count) FROM swaps as b WHERE b.rownum <= a.rownum) as swap_count_cumulative,
+		swap_count,
+		unique_swapers
+		FROM swaps as a)
+	SELECT * FROM culmulative ORDER BY date
+	`;
+
+	let data = await flipside.query.run({ sql: sql });
+
+	return data.records;
+}
 
 const convertPoolNametoSynth = (poolName) => {
 	return poolName.toLowerCase().replace('.', '/');
 };
-
-async function getSaversExtra(height) {
-	if (!height)
-		height = (await getRPCLastBlockHeight()).data.block.header.height;
-
-	const pools = await getPools(height);
-	const midgardPools = (await getMidgardPools()).data;
-	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
-	const heightWeekAgo = height - (7 * 24 * 60 * 60) / 6;
-	const oldPools = await getOldPools(heightWeekAgo);
-
-	const synthSupplies = (await getAssets()).data.supply;
-
-	const earned = (await getEarnings()).data;
-	const deltaEarned = (await getEarnings('day', '1')).data;
-
-	const saversPool = {};
-	for (let pool of pools) {
-		if (pool.savers_depth == 0) {
-			continue;
-		}
-
-		let oldPool = oldPools.find((p) => p.asset === pool.asset);
-
-		let saverReturn = 0;
-		if (oldPool) {
-			let saverBeforeGrowth = oldPool.savers_depth / oldPool.savers_units;
-			let saverGrowth = pool.savers_depth / pool.savers_units;
-			saverReturn =
-				((saverGrowth - saverBeforeGrowth) / saverBeforeGrowth) * (365 / 7);
-		}
-
-
-		let saversCount = await getSaversCount(pool.asset, height);
-
-		let filled = 0;
-		let saverCap = ((2 * +synthCap) / 10e3) * pool.balance_asset;
-		let synthSupply = synthSupplies.find(
-			(a) => a.denom === convertPoolNametoSynth(pool.asset)
-		)?.amount;
-		if (synthSupply) {
-			filled = synthSupply / saverCap;
-		} else {
-			filled = pool.savers_depth / saverCap;
-		}
-		let assetPrice = midgardPools.find(
-			(p) => p.asset === pool.asset
-		).assetPriceUSD;
-
-		saversPool[pool.asset] = {
-			asset: pool.asset,
-			filled,
-			saversCount,
-			saverReturn,
-			earned: earned.meta.pools.find((p) => p.pool === pool.asset).saverEarning,
-			deltaEarned: deltaEarned.meta.pools.find((p) => p.pool === pool.asset)
-				.saverEarning,
-			assetPrice,
-			saversDepth: pool.savers_depth,
-			assetDepth: pool.balance_asset,
-			...(synthSupply && { synthSupply }),
-		};
-	}
-
-	return saversPool;
-}
 
 function calcSaverReturn(
 	saversDepth,
@@ -293,15 +199,11 @@ function calcSaverReturn(
 	);
 }
 
-async function getSaversInfo(height) {
-	if (!height)
-		height = (await getRPCLastBlockHeight()).data.block.header.height;
+async function getSaversInfo() {
 
 	const pools = (await getMidgardPools('7d')).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
-
 	const synthSupplies = (await getAssets()).data.supply;
-
 	const earned = (await getEarnings()).data;
 	const { intervals: earningsInterval } = (await getEarnings('day', '2')).data;
 
@@ -360,6 +262,8 @@ async function getSaversInfo(height) {
 				saversReturn: oldSaversReturn,
 			},
 		};
+
+		await wait(2000);
 	}
 
 	return saversPool;
@@ -393,7 +297,7 @@ async function getPoolsDVE() {
 }
 
 function wait(ms) {
-	return new Promise( (resolve) => {setTimeout(resolve, ms);});
+	return new Promise((resolve) => { setTimeout(resolve, ms); });
 }
 
 async function getPoolsDVEPeriod(from, to) {
@@ -402,23 +306,27 @@ async function getPoolsDVEPeriod(from, to) {
 	let TPools = (await getThorPools()).data.filter(
 		(p) => p.status === 'Available'
 	);
-	
+
+	await wait(3000);
 	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
+	console.log('Got earnings...');
 	for (let i = 0; i < TPools.length; i++) {
 		const asset = TPools[i].asset;
-		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
-		const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
+		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), { key: 'pool', value: asset }])).data.meta;
+		console.log('Got swap history...', asset);
+		await wait(2000);
+		const depthHis = (await getDepthsHistoryParam(asset, createFromToParam(from, to))).data.meta;
+		console.log('Got depth history...', asset);
+		await wait(2000);
 		const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
 		poolRet.push({
-			...poolEarnings, 
-			...depthHis, 
-			swapVolume: poolSwapHistory.totalVolume, 
+			...poolEarnings,
+			...depthHis,
+			swapVolume: poolSwapHistory.totalVolume,
 			swapFees: poolSwapHistory.totalFees,
 			swapCount: poolSwapHistory.totalCount,
 			timestamp: to
 		});
-
-		await wait(2000);
 	}
 
 	return {
@@ -428,15 +336,56 @@ async function getPoolsDVEPeriod(from, to) {
 
 }
 
+function parseMemberDetails(pools) {
+	return pools.map(p => ({
+		...p,
+		poolAdded: [p.runeAdded / 100000000, p.assetAdded / 100000000],
+		poolWithdrawn: [p.runeWithdrawn / 100000000, p.assetWithdrawn / 100000000],
+		dateFirstAdded: p.dateFirstAdded,
+		share: 0,
+		luvi: 0,
+		poolShare: []
+	}));
+}
+
+function findShare(pools, memberDetails, lps) {
+	memberDetails.forEach((m, i) => {
+		const poolDetail = pools.find(p => p.asset === m.pool);
+		const share = m.liquidityUnits / poolDetail.units;
+		const runeAmount = share * poolDetail.runeDepth;
+		const assetAmount = share * poolDetail.assetDepth;
+		lps[i].share = share;
+		lps[i].poolShare.push(+runeAmount / 10e7, +assetAmount / 10e7);
+	});
+}
+
+async function getRunePools() {
+	const { data: { pools: memberDetails } } = await getMemberDetails(modules[process.env.NETWORK].RESERVE_MODULE);
+	const lps = parseMemberDetails(memberDetails);
+	const { data: pools } = await getPools();
+	findShare(pools, memberDetails, lps);
+
+	for (const poolData of memberDetails) {
+		const { data: thorData } = await getLpPositions(poolData.pool, this.reserveAddress);
+		lps.find(p => p.pool === poolData.pool).luvi = thorData.luvi_growth_pct;
+	}
+
+	return lps;
+}
+
+
 module.exports = {
 	dashboardData,
 	dashboardPlots,
 	extraNodesInfo,
-	OHCLprice,
+	RunePrice,
+	SwapCountQuery,
+	TVLHistoryQuery,
+	ChurnHistoryQuery,
 	getSaversInfo,
-	getSaversExtra,
-	getOldSaversExtra,
 	chainsHeight,
 	getPoolsDVE,
-	getOldPoolsDVE
+	getOldPoolsDVE,
+	wait,
+	getRunePools
 };

@@ -9,6 +9,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@flipsidecrypto/sdk": "^2.1.0",
     "axios": "^0.27.2",
     "axios-cache-interceptor": "^0.10.7",
     "axios-retry": "^3.4.0",
@@ -17,6 +18,7 @@
     "dotenv": "^16.0.1",
     "express": "^4.16.1",
     "lodash": "^4.17.21",
+    "node-storage": "^0.0.9",
     "nodemon": "^3.0.1",
     "set-interval-async": "^3.0.3"
   },

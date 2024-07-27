@@ -3,19 +3,19 @@ const Axios = require('axios');
 const { endpoints } = require('../endpoints');
 require('dotenv').config();
 
+// Axios configs
 const axios = Axios.create({
 	baseURL: endpoints[process.env.NETWORK].MIDGARD_BASE_URL,
 	timeout: 30000,
 });
 
 const { setupCache } = require('axios-cache-interceptor');
-const axiosInstace = setupCache(axios, {
-	ttl: 80 * 1e3
-});
+var axiosInstace = setupCache(axios);
 
 const axiosRetry = require('axios-retry');
 axiosRetry(axiosInstace, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
+// Requests
 function getStats() {
 	return axiosInstace.get('stats');
 }
@@ -63,6 +63,10 @@ function getPoolTxs(poolName, offset = 0, limit = 10) {
 	};
 
 	return axiosInstace.get('actions', { params });
+}
+
+function getPools(poolName) {
+	return axiosInstace.get('pools');
 }
 
 function getPoolStats(poolName) {
@@ -193,6 +197,10 @@ function getDepthsHistoryParam(pool = 'BTC.BTC', params = []) {
 	return axiosInstace.get(`history/depths/${pool}` + buildParams(params));
 }
 
+function getMemberDetails(memberID) {
+	return axiosInstace.get(`member/${memberID}`);
+}
+
 module.exports = {
 	getTxs,
 	getStats,
@@ -204,9 +212,11 @@ module.exports = {
 	getEarnings,
 	getSaversHistory,
 	getDepthsHistory,
+	getPools,
 	getPoolStats,
 	getPoolSwapHistory,
 	getEarningsParam,
 	getPoolSwapHistoryParam,
-	getDepthsHistoryParam
+	getDepthsHistoryParam,
+	getMemberDetails
 };

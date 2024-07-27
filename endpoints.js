@@ -13,6 +13,16 @@ const endpoints = {
 	},
 };
 
+const modules = {
+	'mainnet': {
+		RESERVE_MODULE: 'thor1dheycdevq39qlkxs2a6wuuzyn4aqxhve4qxtxt'
+	},
+	'stagenet': {
+		RESERVE_MODULE: 'sthor1dheycdevq39qlkxs2a6wuuzyn4aqxhvepe6as4'
+	}
+};
+
 module.exports = {
-	endpoints
+	endpoints,
+	modules
 };
