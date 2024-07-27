@@ -146,5 +146,6 @@ module.exports = {
 	getNodes,
 	getConstants,
 	getMimir,
-	getThorPools
+	getThorPools,
+	getLpPositions
 };

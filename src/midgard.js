@@ -65,6 +65,10 @@ function getPoolTxs(poolName, offset = 0, limit = 10) {
 	return axiosInstace.get('actions', { params });
 }
 
+function getPools(poolName) {
+	return axiosInstace.get('pools');
+}
+
 function getPoolStats(poolName) {
 	return axiosInstace.get(`pool/${poolName}/stats`);
 }
@@ -193,6 +197,10 @@ function getDepthsHistoryParam(pool = 'BTC.BTC', params = []) {
 	return axiosInstace.get(`history/depths/${pool}` + buildParams(params));
 }
 
+function getMemberDetails(memberID) {
+	return axiosInstace.get(`member/${memberID}`);
+}
+
 module.exports = {
 	getTxs,
 	getStats,
@@ -204,9 +212,11 @@ module.exports = {
 	getEarnings,
 	getSaversHistory,
 	getDepthsHistory,
+	getPools,
 	getPoolStats,
 	getPoolSwapHistory,
 	getEarningsParam,
 	getPoolSwapHistoryParam,
-	getDepthsHistoryParam
+	getDepthsHistoryParam,
+	getMemberDetails
 };

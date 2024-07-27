@@ -9,8 +9,10 @@ const {
 	getEarnings,
 	getSaversHistory,
 	getEarningsParam,
+	getPools,
 	getPoolSwapHistoryParam,
-	getDepthsHistoryParam
+	getDepthsHistoryParam,
+	getMemberDetails
 } = require('./midgard');
 const {
 	getAddresses,
@@ -21,6 +23,7 @@ const {
 	getMimir,
 	getAssets,
 	getThorPools,
+	getLpPositions
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
@@ -33,6 +36,7 @@ axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 require('dotenv').config();
 const { Flipside } = require('@flipsidecrypto/sdk');
+const { modules } = require('../endpoints');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
 	'https://api-v2.flipsidecrypto.xyz'
@@ -81,7 +85,7 @@ async function chainsHeight() {
 		for (const observedChain of node) {
 			if (
 				!maxChainHeights.hasOwnProperty(observedChain['chain']) ||
-        observedChain['height'] >= maxChainHeights[observedChain['chain']]
+				observedChain['height'] >= maxChainHeights[observedChain['chain']]
 			) {
 				maxChainHeights[observedChain['chain']] = observedChain['height'];
 			}
@@ -124,7 +128,7 @@ async function RunePrice() {
 	SELECT c.date, daily_rune_price, deterministic_rune_price from rdp as c inner join rp as e on c.date = e.date order by date
 	`;
 
-	let data = await flipside.query.run({sql: sql});
+	let data = await flipside.query.run({ sql: sql });
 
 	return data.records;
 }
@@ -134,7 +138,7 @@ async function TVLHistoryQuery() {
 	SELECT DAY, TOTAL_VALUE_POOLED, TOTAL_VALUE_BONDED, TOTAL_VALUE_LOCKED FROM thorchain.defi.fact_daily_tvl ORDER BY DAY DESC;
 	`;
 
-	let data = await flipside.query.run({sql: sql});
+	let data = await flipside.query.run({ sql: sql });
 
 	return data.records;
 }
@@ -157,7 +161,7 @@ async function ChurnHistoryQuery() {
 	ORDER BY block_timestamp DESC
 	`;
 
-	let data = await flipside.query.run({sql: sql});
+	let data = await flipside.query.run({ sql: sql });
 
 	return data.records;
 }
@@ -172,7 +176,7 @@ async function SwapCountQuery() {
 	SELECT * FROM culmulative ORDER BY date
 	`;
 
-	let data = await flipside.query.run({sql: sql});
+	let data = await flipside.query.run({ sql: sql });
 
 	return data.records;
 }
@@ -293,7 +297,7 @@ async function getPoolsDVE() {
 }
 
 function wait(ms) {
-	return new Promise( (resolve) => {setTimeout(resolve, ms);});
+	return new Promise((resolve) => { setTimeout(resolve, ms); });
 }
 
 async function getPoolsDVEPeriod(from, to) {
@@ -302,23 +306,23 @@ async function getPoolsDVEPeriod(from, to) {
 	let TPools = (await getThorPools()).data.filter(
 		(p) => p.status === 'Available'
 	);
-	
+
 	await wait(3000);
 	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
 	console.log('Got earnings...');
 	for (let i = 0; i < TPools.length; i++) {
 		const asset = TPools[i].asset;
-		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), {key: 'pool', value: asset}])).data.meta;
+		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), { key: 'pool', value: asset }])).data.meta;
 		console.log('Got swap history...', asset);
 		await wait(2000);
-		const depthHis = (await getDepthsHistoryParam(asset ,createFromToParam(from, to))).data.meta;
+		const depthHis = (await getDepthsHistoryParam(asset, createFromToParam(from, to))).data.meta;
 		console.log('Got depth history...', asset);
 		await wait(2000);
 		const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
 		poolRet.push({
-			...poolEarnings, 
-			...depthHis, 
-			swapVolume: poolSwapHistory.totalVolume, 
+			...poolEarnings,
+			...depthHis,
+			swapVolume: poolSwapHistory.totalVolume,
 			swapFees: poolSwapHistory.totalFees,
 			swapCount: poolSwapHistory.totalCount,
 			timestamp: to
@@ -332,6 +336,44 @@ async function getPoolsDVEPeriod(from, to) {
 
 }
 
+function parseMemberDetails(pools) {
+	return pools.map(p => ({
+		...p,
+		poolAdded: [p.runeAdded / 100000000, p.assetAdded / 100000000],
+		poolWithdrawn: [p.runeWithdrawn / 100000000, p.assetWithdrawn / 100000000],
+		dateFirstAdded: p.dateFirstAdded,
+		share: 0,
+		luvi: 0,
+		poolShare: []
+	}));
+}
+
+function findShare(pools, memberDetails, lps) {
+	memberDetails.forEach((m, i) => {
+		const poolDetail = pools.find(p => p.asset === m.pool);
+		const share = m.liquidityUnits / poolDetail.units;
+		const runeAmount = share * poolDetail.runeDepth;
+		const assetAmount = share * poolDetail.assetDepth;
+		lps[i].share = share;
+		lps[i].poolShare.push(+runeAmount / 10e7, +assetAmount / 10e7);
+	});
+}
+
+async function getRunePools() {
+	const { data: { pools: memberDetails } } = await getMemberDetails(modules[process.env.NETWORK].RESERVE_MODULE);
+	const lps = parseMemberDetails(memberDetails);
+	const { data: pools } = await getPools();
+	findShare(pools, memberDetails, lps);
+
+	for (const poolData of memberDetails) {
+		const { data: thorData } = await getLpPositions(poolData.pool, this.reserveAddress);
+		lps.find(p => p.pool === poolData.pool).luvi = thorData.luvi_growth_pct;
+	}
+
+	return lps;
+}
+
+
 module.exports = {
 	dashboardData,
 	dashboardPlots,
@@ -344,5 +386,6 @@ module.exports = {
 	chainsHeight,
 	getPoolsDVE,
 	getOldPoolsDVE,
-	wait
+	wait,
+	getRunePools
 };
