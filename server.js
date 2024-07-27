@@ -98,6 +98,10 @@ var actions = {
 		fetcher: requests.getOldPoolsDVE,
 		updateEvery: 4 * 60 * 60,
 		params: {interval: 'year'},
+	},
+	runePools: {
+		fetcher: requests.getRunePools,
+		updateEvery: 60 * 2,
 	}
 };
 
