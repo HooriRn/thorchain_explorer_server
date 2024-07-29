@@ -70,9 +70,9 @@ function getMimirVotes() {
 	);
 }
 
-function getLpPositions(poolName) {
+function getLpPositions(poolName, address) {
 	return axiosInstace.get(
-		`thorchain/pool/${poolName}/liquidity_providers`
+		`thorchain/pool/${poolName}/liquidity_provider/${address}`
 	);
 }
 

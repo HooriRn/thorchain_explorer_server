@@ -366,7 +366,7 @@ async function getRunePools() {
 	findShare(pools, memberDetails, lps);
 
 	for (const poolData of memberDetails) {
-		const { data: thorData } = await getLpPositions(poolData.pool, this.reserveAddress);
+		const { data: thorData } = await getLpPositions(poolData.pool, modules[process.env.NETWORK].RESERVE_MODULE);
 		lps.find(p => p.pool === poolData.pool).luvi = thorData.luvi_growth_pct;
 	}
 
