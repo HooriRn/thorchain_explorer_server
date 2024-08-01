@@ -367,7 +367,12 @@ async function getRunePools() {
 
 	for (const poolData of memberDetails) {
 		const { data: thorData } = await getLpPositions(poolData.pool, modules[process.env.NETWORK].RESERVE_MODULE);
-		lps.find(p => p.pool === poolData.pool).luvi = thorData.luvi_growth_pct;
+		let e = lps.find(p => p.pool === poolData.pool);
+		e = {
+			...e,
+			luvi: thorData.luvi_growth_pct,
+			...thorData
+		};
 	}
 
 	return lps;
