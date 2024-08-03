@@ -383,7 +383,7 @@ async function oldRunePool() {
 	const { data: rpcLastHeight } = (await getRPCLastBlockHeight());
 
 	const height = +rpcLastHeight?.block?.header?.height;
-	return ({ data: this.oldRunePool } = await getThorRunePool(+height - 24 * 60 * 10 ));
+	return (await getThorRunePool(+height - 24 * 60 * 10 )).data;
 }
 
 

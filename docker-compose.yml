@@ -15,6 +15,11 @@ services:
     environment:
       - PORT=8080
       - NETWORK=mainnet
+    volumes:
+      - mainnet:/usr/src/app/storage
+      - type: volume
+        source: mainnet
+        target: /usr/src/app/storage
 
   nodejs_stage:
     build:
@@ -30,6 +35,11 @@ services:
     environment:
       - PORT=9000
       - NETWORK=stagenet
+    volumes:
+      - stagenet:/usr/src/app/storage
+      - type: volume
+        source: stagenet
+        target: /usr/src/app/storage
 
   webserver:
     image: nginx:mainline-alpine
@@ -71,6 +81,10 @@ volumes:
       type: none
       device: /root/devs/explorer_server/dhparam/
       o: bind
+  stagenet:
+    driver: local
+  mainnet:
+    driver: local
 
 networks:
   app-network:
