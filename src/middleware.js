@@ -23,7 +23,8 @@ const {
 	getMimir,
 	getAssets,
 	getThorPools,
-	getLpPositions
+	getLpPositions,
+	getThorRunePool
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
@@ -378,6 +379,13 @@ async function getRunePools() {
 	return lps;
 }
 
+async function oldRunePool() {
+	const { data: rpcLastHeight } = (await getRPCLastBlockHeight());
+
+	const height = +rpcLastHeight?.block?.header?.height;
+	return ({ data: this.oldRunePool } = await getThorRunePool(+height - 24 * 60 * 10 ));
+}
+
 
 module.exports = {
 	dashboardData,
@@ -392,5 +400,6 @@ module.exports = {
 	getPoolsDVE,
 	getOldPoolsDVE,
 	wait,
-	getRunePools
+	getRunePools,
+	oldRunePool
 };

@@ -102,6 +102,10 @@ var actions = {
 	runePools: {
 		fetcher: requests.getRunePools,
 		updateEvery: 60 * 2,
+	},
+	oldRunePool: {
+		fetcher: requests.oldRunePool,
+		updateEvery: 60 * 2,
 	}
 };
 

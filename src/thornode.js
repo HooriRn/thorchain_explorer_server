@@ -137,6 +137,13 @@ function getConstants() {
 	);
 }
 
+function getThorRunePool(height) {
+	return axiosInstace.get(
+		'thorchain/runepool' +
+		(height ? `?height=${height}` : '')
+	);
+}
+
 module.exports = {
 	getAddresses,
 	getRPCLastBlockHeight,
@@ -147,5 +154,6 @@ module.exports = {
 	getConstants,
 	getMimir,
 	getThorPools,
-	getLpPositions
+	getLpPositions,
+	getThorRunePool
 };
