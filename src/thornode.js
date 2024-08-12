@@ -144,6 +144,13 @@ function getThorRunePool(height) {
 	);
 }
 
+function getThorRuneProviders(height) {
+	return axiosInstace.get(
+		'thorchain/rune_providers' +
+		(height ? `?height=${height}` : '')
+	);
+}
+
 module.exports = {
 	getAddresses,
 	getRPCLastBlockHeight,
@@ -155,5 +162,6 @@ module.exports = {
 	getMimir,
 	getThorPools,
 	getLpPositions,
-	getThorRunePool
+	getThorRunePool,
+	getThorRuneProviders
 };

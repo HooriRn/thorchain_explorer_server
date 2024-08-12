@@ -106,6 +106,14 @@ var actions = {
 	oldRunePool: {
 		fetcher: requests.oldRunePool,
 		updateEvery: 60 * 2,
+	},
+	runePoolProviders: {
+		fetcher: requests.getRuneProviders,
+		updateEvery: 60,
+	},
+	oldRunePoolProviders: {
+		fetcher: requests.getOldRuneProviders,
+		updateEvery: 60,
 	}
 };
 

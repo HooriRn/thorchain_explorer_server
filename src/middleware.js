@@ -24,7 +24,8 @@ const {
 	getAssets,
 	getThorPools,
 	getLpPositions,
-	getThorRunePool
+	getThorRunePool,
+	getThorRuneProviders
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
@@ -386,6 +387,54 @@ async function oldRunePool() {
 	return (await getThorRunePool(+height - 24 * 60 * 10 )).data;
 }
 
+async function RUNEPoolProviders(height, old) {
+	if (old) {
+		height = +height - 24 * 60 * 10;
+	}
+
+	const rp = (await getThorRuneProviders(height)).data;
+
+	const ret = rp.reduce((a, c) => {
+		const depositedTime = ((height - c.last_deposit_height) * 6); 
+		let apy = 0;
+		let deposit = 0;
+		if ((depositedTime / (24 * 60 * 60)) >= 1) {
+			const returnRate = +c.pnl / +c.deposit_amount;
+			const ppy = (365 * 24 * 60 * 60) / (depositedTime);
+			const periodicRate = returnRate / ppy;
+			apy = Math.pow((1 + periodicRate), ppy) - 1;
+			deposit = +c.deposit_amount;
+		}
+		
+		return {
+			pnl: +a.pnl + +c.pnl,
+			count: a.count + 1,
+			deposit: +a.deposit + deposit,
+			annualRate: (apy * +c.deposit_amount) + +a.annualRate
+		};
+	}, {
+		pnl: 0, count: 0, deposit: 0, annualRate: 0
+	});
+
+	return {
+		...ret,
+		cumlativeAPY: ret.annualRate / ret.deposit
+	};
+}
+
+async function getOldRuneProviders() {
+	const { data: rpcLastHeight } = (await getRPCLastBlockHeight());
+
+	const height = +rpcLastHeight?.block?.header?.height;
+	return (await RUNEPoolProviders(height, true));
+}
+
+async function getRuneProviders() {
+	const { data: rpcLastHeight } = (await getRPCLastBlockHeight());
+
+	const height = +rpcLastHeight?.block?.header?.height;
+	return (await RUNEPoolProviders(height, false));
+}
 
 module.exports = {
 	dashboardData,
@@ -401,5 +450,7 @@ module.exports = {
 	getOldPoolsDVE,
 	wait,
 	getRunePools,
-	oldRunePool
+	oldRunePool,
+	getOldRuneProviders,
+	getRuneProviders
 };
