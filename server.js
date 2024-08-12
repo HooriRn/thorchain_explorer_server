@@ -114,6 +114,10 @@ var actions = {
 	oldRunePoolProviders: {
 		fetcher: requests.getOldRuneProviders,
 		updateEvery: 60,
+	},
+	borrowers: {
+		fetcher: requests.getLendingInfo,
+		updateEvery: 10
 	}
 };
 

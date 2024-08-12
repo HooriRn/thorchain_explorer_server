@@ -151,6 +151,16 @@ function getThorRuneProviders(height) {
 	);
 }
 
+function getDerivedPoolDetail(poolName) {
+	return axiosInstace.get(`thorchain/dpool/${poolName}`);
+}
+
+function getBorrowers(pool) {
+	return axiosInstace.get(
+		`thorchain/pool/${pool}/borrowers`
+	);
+}
+
 module.exports = {
 	getAddresses,
 	getRPCLastBlockHeight,
@@ -163,5 +173,7 @@ module.exports = {
 	getThorPools,
 	getLpPositions,
 	getThorRunePool,
-	getThorRuneProviders
+	getThorRuneProviders,
+	getDerivedPoolDetail,
+	getBorrowers
 };

@@ -25,7 +25,9 @@ const {
 	getThorPools,
 	getLpPositions,
 	getThorRunePool,
-	getThorRuneProviders
+	getThorRuneProviders,
+	getDerivedPoolDetail,
+	getBorrowers
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
@@ -39,6 +41,7 @@ axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 require('dotenv').config();
 const { Flipside } = require('@flipsidecrypto/sdk');
 const { modules } = require('../endpoints');
+const { GetDerivedAsset } = require('./util');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
 	'https://api-v2.flipsidecrypto.xyz'
@@ -436,6 +439,90 @@ async function getRuneProviders() {
 	return (await RUNEPoolProviders(height, false));
 }
 
+
+
+async function getLendingInfo() {
+	const { data: mimirs } = await getMimir();
+	const { data: pools } = await getThorPools();
+	const { data: torPool } = await getDerivedPoolDetail('THOR.TOR');
+	const { data: supplies } =  await getSupplyRune();
+
+	const availablePools = [
+		'BTC.BTC',
+		'ETH.ETH',
+		'AVAX.AVAX',
+		'GAIA.ATOM',
+		'BNB.BNB',
+		'BCH.BCH',
+		'DOGE.DOGE',
+	];
+
+	const derivedPools = {};
+	availablePools.forEach(e => derivedPools[e] = GetDerivedAsset(e));
+
+	const lendingPools = [];
+	for (let k in derivedPools) {
+		if (mimirs[`LENDING-${derivedPools[k].replace('.', '-')}`] === 1) {
+			lendingPools.push(k);
+		}
+	}
+	
+	const currentRuneSupply = supplies?.amount?.amount;
+	const totalBalanceRune = pools
+		.filter((e) => lendingPools.includes(e.asset))
+		.map((e) => e.balance_rune)
+		.reduce((a, c) => a + +c, 0);
+
+	const maxRuneSupply = mimirs.MAXRUNESUPPLY ?? 50000000000000000;
+	const totalRuneForProtocol = ((mimirs.LENDINGLEVER ?? 3333) / 10000) * (maxRuneSupply - currentRuneSupply);
+
+	const borrowers = [];
+	for (const p of lendingPools) {
+		const { data: bs } = await getBorrowers(p);
+		const poolData = pools.find((e) => e.asset === p);
+		const collateralPoolInRune = poolData.loan_collateral * (+poolData.balance_rune / +poolData.balance_asset);
+
+		if (!bs || poolData.loan_collateral === '0') {
+			continue;
+		}
+
+		bs.map((b) => ({
+			...b,
+			collateral: +b.collateral_current,
+			debt: +b.debt_current,
+		}));
+		
+		const res = bs.reduce(
+			(ac, cv) => 
+				({
+					debt: ac.debt + +cv.debt_current,
+					borrowersCount: ac.borrowersCount + 1,
+				}),
+			{
+				collateral: 0,
+				debt: 0,
+				borrowersCount: 0,
+			}
+		);
+
+
+		borrowers.push({
+			...res,
+			collateral: poolData.loan_collateral,
+			pool: poolData.asset,
+			availableRune: (poolData.balance_rune / totalBalanceRune) * totalRuneForProtocol,
+			fill:
+				collateralPoolInRune /
+				((poolData.balance_rune / totalBalanceRune) * totalRuneForProtocol),
+			collateralPoolInRune,
+			debtInRune: res.debt * (torPool.balance_rune / torPool.balance_asset),
+			collateralAvailable: poolData.loan_collateral_remaining,
+		});
+	}
+
+	return borrowers;
+}
+
 module.exports = {
 	dashboardData,
 	dashboardPlots,
@@ -452,5 +539,6 @@ module.exports = {
 	getRunePools,
 	oldRunePool,
 	getOldRuneProviders,
-	getRuneProviders
+	getRuneProviders,
+	getLendingInfo
 };
