@@ -480,12 +480,15 @@ async function getLendingInfo() {
 	for (const p of lendingPools) {
 		const { data: bs } = await getBorrowers(p);
 		const poolData = pools.find((e) => e.asset === p);
-		const collateralPoolInRune = poolData.loan_collateral * (+poolData.balance_rune / +poolData.balance_asset);
-
+		
+		if (!poolData) {
+			continue;
+		}
 		if (!bs || poolData.loan_collateral === '0') {
 			continue;
 		}
-
+		
+		const collateralPoolInRune = poolData.loan_collateral * (+poolData.balance_rune / +poolData.balance_asset);
 		bs.map((b) => ({
 			...b,
 			collateral: +b.collateral_current,
