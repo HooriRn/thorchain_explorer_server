@@ -81,6 +81,10 @@ function swapHistory() {
 	return axiosInstace.get('history/swaps?interval=day&count=30');
 }
 
+function swapHistoryFrom(from) {
+	return axiosInstace.get(`history/swaps?from=${from}`);
+}
+
 function getPoolSwapHistory(pool = '', interval = '', count = '') {
 	const poolParam = `pool=${pool}`;
 	const intervalParam = `interval=${interval}`;

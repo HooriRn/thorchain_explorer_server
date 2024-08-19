@@ -42,6 +42,8 @@ require('dotenv').config();
 const { Flipside } = require('@flipsidecrypto/sdk');
 const { modules } = require('../endpoints');
 const { GetDerivedAsset } = require('./util');
+const { getTHORlastblock } = require('./infra');
+const { thorchainStatsDaily, feesVsRewardsMonthly, swapsCategoricalMonthly, affiliateSwapsByWallet } = require('./sql');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
 	'https://api-v2.flipsidecrypto.xyz'
@@ -125,64 +127,32 @@ async function extraNodesInfo() {
 	return nodeInfo;
 }
 
-async function RunePrice() {
-	let sql = `
-	with 
-	rdp AS (SELECT day as date, (((total_value_pooled_usd * 3/2) + total_value_bonded_usd) / 500000000)  AS deterministic_rune_price FROM thorchain.defi.fact_daily_tvl ORDER BY date),
-	rp AS (SELECT time_slice(block_timestamp, 1, 'HOUR', 'START') as date, avg(price_asset_rune) as daily_rune_price from thorchain.price.fact_prices where pool_name='BNB.BUSD-BD1' group by date order by date)
-	SELECT c.date, daily_rune_price, deterministic_rune_price from rdp as c inner join rp as e on c.date = e.date order by date
-	`;
+async function SwapQuery() {
+	let sql = swapsCategoricalMonthly;
 
 	let data = await flipside.query.run({ sql: sql });
 
 	return data.records;
 }
 
-async function TVLHistoryQuery() {
-	let sql = `
-	SELECT DAY, TOTAL_VALUE_POOLED, TOTAL_VALUE_BONDED, TOTAL_VALUE_LOCKED FROM thorchain.defi.fact_daily_tvl ORDER BY DAY DESC;
-	`;
+async function ThorchainStatsDaily() {
+	let sql = thorchainStatsDaily;
 
 	let data = await flipside.query.run({ sql: sql });
-
 	return data.records;
 }
 
-async function ChurnHistoryQuery() {
-	let sql = `
-	WITH
-	churn_blocks AS
-	(
-		SELECT DISTINCT block_timestamp, dim_block_id
-		  FROM thorchain.defi.fact_update_node_account_status_events
-	)
-	, dim_convert AS (
-	  SELECT dim_block_id, block_id
-	  FROM thorchain.core.dim_block
-	)
-	SELECT block_timestamp, block_id,
-	  ROUND((1/24) * DATEDIFF(hour, LAG(block_timestamp) OVER(ORDER BY block_id ASC), block_timestamp)) AS days_since_last_churn
-	FROM (churn_blocks INNER JOIN dim_convert ON churn_blocks.dim_block_id = dim_convert.dim_block_id)
-	ORDER BY block_timestamp DESC
-	`;
+async function FeesRewardsMonthly() {
+	let sql = feesVsRewardsMonthly;
 
 	let data = await flipside.query.run({ sql: sql });
-
 	return data.records;
 }
 
-async function SwapCountQuery() {
-	let sql = `
-	WITH swaps AS (SELECT day as date, SUM(swap_count) as swap_count, SUM(unique_swapper_count) as unique_swapers, ROW_NUMBER() OVER (ORDER BY date) as rownum FROM thorchain.defi.fact_daily_pool_stats Group BY day),
-	culmulative AS (SELECT date, (SELECT SUM(swap_count) FROM swaps as b WHERE b.rownum <= a.rownum) as swap_count_cumulative,
-		swap_count,
-		unique_swapers
-		FROM swaps as a)
-	SELECT * FROM culmulative ORDER BY date
-	`;
+async function AffiliateSwapsByWallet() {
+	let sql = affiliateSwapsByWallet;
 
 	let data = await flipside.query.run({ sql: sql });
-
 	return data.records;
 }
 
@@ -530,10 +500,6 @@ module.exports = {
 	dashboardData,
 	dashboardPlots,
 	extraNodesInfo,
-	RunePrice,
-	SwapCountQuery,
-	TVLHistoryQuery,
-	ChurnHistoryQuery,
 	getSaversInfo,
 	chainsHeight,
 	getPoolsDVE,
@@ -543,5 +509,10 @@ module.exports = {
 	oldRunePool,
 	getOldRuneProviders,
 	getRuneProviders,
-	getLendingInfo
+	getLendingInfo,
+	getTHORlastblock,
+	SwapQuery,
+	ThorchainStatsDaily,
+	FeesRewardsMonthly,
+	AffiliateSwapsByWallet
 };

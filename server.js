@@ -41,23 +41,47 @@ var actions = {
 	},
 	chainsHeight: {
 		fetcher: requests.chainsHeight,
-		updateEvery: 30
-	},
-	runePrice: {
-		fetcher: requests.RunePrice,
-		updateEvery: 60 * 60
-	},
-	tvlHistoryQuery: {
-		fetcher: requests.TVLHistoryQuery,
-		updateEvery: 60 * 60
-	},
-	churnHistory: {
-		fetcher: requests.ChurnHistoryQuery,
-		updateEvery: 60 * 60
+		updateEvery: 10
 	},
 	saversInfo: {
 		fetcher: requests.getSaversInfo,
 		updateEvery: 60 * 60
+	},
+	runePools: {
+		fetcher: requests.getRunePools,
+		updateEvery: 60 * 2,
+	},
+	oldRunePool: {
+		fetcher: requests.oldRunePool,
+		updateEvery: 60 * 2,
+	},
+	runePoolProviders: {
+		fetcher: requests.getRuneProviders,
+		updateEvery: 60,
+	},
+	oldRunePoolProviders: {
+		fetcher: requests.getOldRuneProviders,
+		updateEvery: 60,
+	},
+	borrowers: {
+		fetcher: requests.getLendingInfo,
+		updateEvery: 60 * 2
+	},
+	swapsWeekly: {
+		fetcher: requests.SwapQuery,
+		updateEvery: 60 * 60 * 24,
+	},
+	statsDaily: {
+		fetcher: requests.ThorchainStatsDaily,
+		updateEvery: 60 * 60 * 24
+	},
+	feesRewardsMonthly: {
+		fetcher: requests.FeesRewardsMonthly,
+		updateEvery: 60 * 60 * 24
+	},
+	affiliateSwapsByWallet: {
+		fetcher: requests.AffiliateSwapsByWallet,
+		updateEvery: 60 * 60 * 24
 	},
 	historyPools: {
 		fetcher: requests.getPoolsDVE,
@@ -99,26 +123,6 @@ var actions = {
 		updateEvery: 4 * 60 * 60,
 		params: {interval: 'year'},
 	},
-	runePools: {
-		fetcher: requests.getRunePools,
-		updateEvery: 60 * 2,
-	},
-	oldRunePool: {
-		fetcher: requests.oldRunePool,
-		updateEvery: 60 * 2,
-	},
-	runePoolProviders: {
-		fetcher: requests.getRuneProviders,
-		updateEvery: 60,
-	},
-	oldRunePoolProviders: {
-		fetcher: requests.getOldRuneProviders,
-		updateEvery: 60,
-	},
-	borrowers: {
-		fetcher: requests.getLendingInfo,
-		updateEvery: 10
-	}
 };
 
 async function updateAction(name) {
@@ -225,6 +229,11 @@ app.get('/api/*', (req, res) => {
 
 app.get('/', (req, res) => {
 	res.send('<p>Welcome!</p>');
+});
+
+app.get('/lastblock', async (req, res) => {
+	const height = await requests.getTHORlastblock();
+	res.json(height);
 });
 
 app.listen(PORT, HOST);
