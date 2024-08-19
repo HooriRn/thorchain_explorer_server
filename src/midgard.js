@@ -222,5 +222,6 @@ module.exports = {
 	getEarningsParam,
 	getPoolSwapHistoryParam,
 	getDepthsHistoryParam,
-	getMemberDetails
+	getMemberDetails,
+	swapHistoryFrom
 };

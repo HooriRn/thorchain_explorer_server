@@ -12,7 +12,8 @@ const {
 	getPools,
 	getPoolSwapHistoryParam,
 	getDepthsHistoryParam,
-	getMemberDetails
+	getMemberDetails,
+	swapHistoryFrom
 } = require('./midgard');
 const {
 	getAddresses,
@@ -54,6 +55,10 @@ async function dashboardPlots() {
 	const { data: swaps } = await swapHistory();
 	const { data: tvl } = await tvlHistory();
 	const { data: earning } = await earningsHistory();
+	
+	const len = swaps.intervals.length;
+	const {data: lastSwaps} = await swapHistoryFrom(swaps.intervals[len - 1].startTime);
+	swaps.intervals[len - 1] = lastSwaps?.meta;
 
 	return {
 		LPChange,
