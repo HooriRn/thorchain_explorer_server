@@ -85,6 +85,15 @@ function swapHistoryFrom(from) {
 	return axiosInstace.get(`history/swaps?from=${from}`);
 }
 
+function swapHistoryParams(from, to) { 
+	const params = {
+		from,
+		to
+	};
+
+	return axiosInstace.get('history/swaps', {params});
+}
+
 function getPoolSwapHistory(pool = '', interval = '', count = '') {
 	const poolParam = `pool=${pool}`;
 	const intervalParam = `interval=${interval}`;
@@ -223,5 +232,6 @@ module.exports = {
 	getPoolSwapHistoryParam,
 	getDepthsHistoryParam,
 	getMemberDetails,
-	swapHistoryFrom
+	swapHistoryFrom,
+	swapHistoryParams
 };

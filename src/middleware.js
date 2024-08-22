@@ -13,7 +13,8 @@ const {
 	getPoolSwapHistoryParam,
 	getDepthsHistoryParam,
 	getMemberDetails,
-	swapHistoryFrom
+	swapHistoryFrom,
+	swapHistoryParams,
 } = require('./midgard');
 const {
 	getAddresses,
@@ -28,7 +29,7 @@ const {
 	getThorRunePool,
 	getThorRuneProviders,
 	getDerivedPoolDetail,
-	getBorrowers
+	getBorrowers,
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
@@ -44,7 +45,12 @@ const { Flipside } = require('@flipsidecrypto/sdk');
 const { modules } = require('../endpoints');
 const { GetDerivedAsset } = require('./util');
 const { getTHORlastblock } = require('./infra');
-const { thorchainStatsDaily, feesVsRewardsMonthly, swapsCategoricalMonthly, affiliateSwapsByWallet } = require('./sql');
+const {
+	thorchainStatsDaily,
+	feesVsRewardsMonthly,
+	swapsCategoricalMonthly,
+	affiliateSwapsByWallet,
+} = require('./sql');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
 	'https://api-v2.flipsidecrypto.xyz'
@@ -55,10 +61,36 @@ async function dashboardPlots() {
 	const { data: swaps } = await swapHistory();
 	const { data: tvl } = await tvlHistory();
 	const { data: earning } = await earningsHistory();
-	
+
 	const len = swaps.intervals.length;
-	const {data: lastSwaps} = await swapHistoryFrom(swaps.intervals[len - 1].startTime);
+	const { data: lastSwaps } = await swapHistoryFrom(
+		swaps.intervals[len - 1].startTime
+	);
 	swaps.intervals[len - 1] = lastSwaps?.meta;
+
+	// ADD EOD volume
+	const oldPeriodFunc = async (start, end) => {
+		const oldPeriod = {
+			from: +end.endTime - +end.startTime + +start.startTime,
+			to: +start.endTime,
+		};
+
+		const {
+			data: {
+				meta: { totalVolumeUSD: oldPeriodData },
+			},
+		} = await swapHistoryParams(oldPeriod.from, oldPeriod.to);
+
+		return +oldPeriodData;
+	};
+	
+	const oOne = (await oldPeriodFunc(swaps.intervals[len - 2], swaps.intervals[len - 1]));
+	const oTwo = (await oldPeriodFunc(swaps.intervals[len - 3], swaps.intervals[len - 1]));
+	const oThree = (await oldPeriodFunc(swaps.intervals[len - 4], swaps.intervals[len - 1]));
+	const oldPeriodVolume = (oOne + oTwo + oThree) / 3;
+	const oldTotalAverage = swaps.intervals.slice(-4, -1).reduce((a, c) => a + +c.totalVolumeUSD, 0) / 3;
+	const EODVolume = swaps.intervals[len - 1].totalVolumeUSD * oldPeriodVolume / (oldTotalAverage - oldPeriodVolume);
+	swaps.intervals[len - 1].EODVolume = EODVolume;
 
 	return {
 		LPChange,
@@ -97,7 +129,7 @@ async function chainsHeight() {
 		for (const observedChain of node) {
 			if (
 				!maxChainHeights.hasOwnProperty(observedChain['chain']) ||
-				observedChain['height'] >= maxChainHeights[observedChain['chain']]
+        observedChain['height'] >= maxChainHeights[observedChain['chain']]
 			) {
 				maxChainHeights[observedChain['chain']] = observedChain['height'];
 			}
@@ -180,7 +212,6 @@ function calcSaverReturn(
 }
 
 async function getSaversInfo() {
-
 	const pools = (await getMidgardPools('7d')).data;
 	const synthCap = (await getMimir()).data.MAXSYNTHPERPOOLDEPTH;
 	const synthSupplies = (await getAssets()).data.supply;
@@ -253,12 +284,12 @@ function createFromToParam(from, to) {
 	return [
 		{
 			key: 'from',
-			value: from
+			value: from,
 		},
 		{
 			key: 'to',
-			value: to
-		}
+			value: to,
+		},
 	];
 }
 
@@ -277,7 +308,9 @@ async function getPoolsDVE() {
 }
 
 function wait(ms) {
-	return new Promise((resolve) => { setTimeout(resolve, ms); });
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
 }
 
 async function getPoolsDVEPeriod(from, to) {
@@ -288,49 +321,56 @@ async function getPoolsDVEPeriod(from, to) {
 	);
 
 	await wait(3000);
-	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data.meta;
+	let poolsEarnings = (await getEarningsParam(createFromToParam(from, to))).data
+		.meta;
 	console.log('Got earnings...');
 	for (let i = 0; i < TPools.length; i++) {
 		const asset = TPools[i].asset;
-		const poolSwapHistory = (await getPoolSwapHistoryParam([...createFromToParam(from, to), { key: 'pool', value: asset }])).data.meta;
+		const poolSwapHistory = (
+			await getPoolSwapHistoryParam([
+				...createFromToParam(from, to),
+				{ key: 'pool', value: asset },
+			])
+		).data.meta;
 		console.log('Got swap history...', asset);
 		await wait(2000);
-		const depthHis = (await getDepthsHistoryParam(asset, createFromToParam(from, to))).data.meta;
+		const depthHis = (
+			await getDepthsHistoryParam(asset, createFromToParam(from, to))
+		).data.meta;
 		console.log('Got depth history...', asset);
 		await wait(2000);
-		const poolEarnings = poolsEarnings.pools.find(p => asset === p.pool);
+		const poolEarnings = poolsEarnings.pools.find((p) => asset === p.pool);
 		poolRet.push({
 			...poolEarnings,
 			...depthHis,
 			swapVolume: poolSwapHistory.totalVolume,
 			swapFees: poolSwapHistory.totalFees,
 			swapCount: poolSwapHistory.totalCount,
-			timestamp: to
+			timestamp: to,
 		});
 	}
 
 	return {
 		total: omit(poolsEarnings, 'pools'),
-		pools: poolRet
+		pools: poolRet,
 	};
-
 }
 
 function parseMemberDetails(pools) {
-	return pools.map(p => ({
+	return pools.map((p) => ({
 		...p,
 		poolAdded: [p.runeAdded / 100000000, p.assetAdded / 100000000],
 		poolWithdrawn: [p.runeWithdrawn / 100000000, p.assetWithdrawn / 100000000],
 		dateFirstAdded: p.dateFirstAdded,
 		share: 0,
 		luvi: 0,
-		poolShare: []
+		poolShare: [],
 	}));
 }
 
 function findShare(pools, memberDetails, lps) {
 	memberDetails.forEach((m, i) => {
-		const poolDetail = pools.find(p => p.asset === m.pool);
+		const poolDetail = pools.find((p) => p.asset === m.pool);
 		const share = m.liquidityUnits / poolDetail.units;
 		const runeAmount = share * poolDetail.runeDepth;
 		const assetAmount = share * poolDetail.assetDepth;
@@ -340,18 +380,23 @@ function findShare(pools, memberDetails, lps) {
 }
 
 async function getRunePools() {
-	const { data: { pools: memberDetails } } = await getMemberDetails(modules[process.env.NETWORK].RESERVE_MODULE);
+	const {
+		data: { pools: memberDetails },
+	} = await getMemberDetails(modules[process.env.NETWORK].RESERVE_MODULE);
 	const lps = parseMemberDetails(memberDetails);
 	const { data: pools } = await getPools();
 	findShare(pools, memberDetails, lps);
 
 	for (const poolData of memberDetails) {
-		const { data: thorData } = await getLpPositions(poolData.pool, modules[process.env.NETWORK].RESERVE_MODULE);
-		let i = lps.findIndex(p => p.pool === poolData.pool);
+		const { data: thorData } = await getLpPositions(
+			poolData.pool,
+			modules[process.env.NETWORK].RESERVE_MODULE
+		);
+		let i = lps.findIndex((p) => p.pool === poolData.pool);
 		lps[i] = {
-			...(lps[i]),
+			...lps[i],
 			luvi: thorData.luvi_growth_pct,
-			...thorData
+			...thorData,
 		};
 	}
 
@@ -359,10 +404,10 @@ async function getRunePools() {
 }
 
 async function oldRunePool() {
-	const { data: rpcLastHeight } = (await getRPCLastBlockHeight());
+	const { data: rpcLastHeight } = await getRPCLastBlockHeight();
 
 	const height = +rpcLastHeight?.block?.header?.height;
-	return (await getThorRunePool(+height - 24 * 60 * 10 )).data;
+	return (await getThorRunePool(+height - 24 * 60 * 10)).data;
 }
 
 async function RUNEPoolProviders(height, old) {
@@ -372,55 +417,59 @@ async function RUNEPoolProviders(height, old) {
 
 	const rp = (await getThorRuneProviders(height)).data;
 
-	const ret = rp.reduce((a, c) => {
-		const depositedTime = ((height - c.last_deposit_height) * 6); 
-		let apy = 0;
-		let deposit = 0;
-		if ((depositedTime / (24 * 60 * 60)) >= 1) {
-			const returnRate = +c.pnl / +c.deposit_amount;
-			const ppy = (365 * 24 * 60 * 60) / (depositedTime);
-			const periodicRate = returnRate / ppy;
-			apy = Math.pow((1 + periodicRate), ppy) - 1;
-			deposit = +c.deposit_amount;
+	const ret = rp.reduce(
+		(a, c) => {
+			const depositedTime = (height - c.last_deposit_height) * 6;
+			let apy = 0;
+			let deposit = 0;
+			if (depositedTime / (24 * 60 * 60) >= 1) {
+				const returnRate = +c.pnl / +c.deposit_amount;
+				const ppy = (365 * 24 * 60 * 60) / depositedTime;
+				const periodicRate = returnRate / ppy;
+				apy = Math.pow(1 + periodicRate, ppy) - 1;
+				deposit = +c.deposit_amount;
+			}
+
+			return {
+				pnl: +a.pnl + +c.pnl,
+				count: a.count + 1,
+				deposit: +a.deposit + deposit,
+				annualRate: apy * +c.deposit_amount + +a.annualRate,
+			};
+		},
+		{
+			pnl: 0,
+			count: 0,
+			deposit: 0,
+			annualRate: 0,
 		}
-		
-		return {
-			pnl: +a.pnl + +c.pnl,
-			count: a.count + 1,
-			deposit: +a.deposit + deposit,
-			annualRate: (apy * +c.deposit_amount) + +a.annualRate
-		};
-	}, {
-		pnl: 0, count: 0, deposit: 0, annualRate: 0
-	});
+	);
 
 	return {
 		...ret,
-		cumlativeAPY: ret.annualRate / ret.deposit
+		cumlativeAPY: ret.annualRate / ret.deposit,
 	};
 }
 
 async function getOldRuneProviders() {
-	const { data: rpcLastHeight } = (await getRPCLastBlockHeight());
+	const { data: rpcLastHeight } = await getRPCLastBlockHeight();
 
 	const height = +rpcLastHeight?.block?.header?.height;
-	return (await RUNEPoolProviders(height, true));
+	return await RUNEPoolProviders(height, true);
 }
 
 async function getRuneProviders() {
-	const { data: rpcLastHeight } = (await getRPCLastBlockHeight());
+	const { data: rpcLastHeight } = await getRPCLastBlockHeight();
 
 	const height = +rpcLastHeight?.block?.header?.height;
-	return (await RUNEPoolProviders(height, false));
+	return await RUNEPoolProviders(height, false);
 }
-
-
 
 async function getLendingInfo() {
 	const { data: mimirs } = await getMimir();
 	const { data: pools } = await getThorPools();
 	const { data: torPool } = await getDerivedPoolDetail('THOR.TOR');
-	const { data: supplies } =  await getSupplyRune();
+	const { data: supplies } = await getSupplyRune();
 
 	const availablePools = [
 		'BTC.BTC',
@@ -433,7 +482,7 @@ async function getLendingInfo() {
 	];
 
 	const derivedPools = {};
-	availablePools.forEach(e => derivedPools[e] = GetDerivedAsset(e));
+	availablePools.forEach((e) => (derivedPools[e] = GetDerivedAsset(e)));
 
 	const lendingPools = [];
 	for (let k in derivedPools) {
@@ -441,7 +490,7 @@ async function getLendingInfo() {
 			lendingPools.push(k);
 		}
 	}
-	
+
 	const currentRuneSupply = supplies?.amount?.amount;
 	const totalBalanceRune = pools
 		.filter((e) => lendingPools.includes(e.asset))
@@ -449,33 +498,36 @@ async function getLendingInfo() {
 		.reduce((a, c) => a + +c, 0);
 
 	const maxRuneSupply = mimirs.MAXRUNESUPPLY ?? 50000000000000000;
-	const totalRuneForProtocol = ((mimirs.LENDINGLEVER ?? 3333) / 10000) * (maxRuneSupply - currentRuneSupply);
+	const totalRuneForProtocol =
+    ((mimirs.LENDINGLEVER ?? 3333) / 10000) *
+    (maxRuneSupply - currentRuneSupply);
 
 	const borrowers = [];
 	for (const p of lendingPools) {
 		const { data: bs } = await getBorrowers(p);
 		const poolData = pools.find((e) => e.asset === p);
-		
+
 		if (!poolData) {
 			continue;
 		}
 		if (!bs || poolData.loan_collateral === '0') {
 			continue;
 		}
-		
-		const collateralPoolInRune = poolData.loan_collateral * (+poolData.balance_rune / +poolData.balance_asset);
+
+		const collateralPoolInRune =
+      poolData.loan_collateral *
+      (+poolData.balance_rune / +poolData.balance_asset);
 		bs.map((b) => ({
 			...b,
 			collateral: +b.collateral_current,
 			debt: +b.debt_current,
 		}));
-		
+
 		const res = bs.reduce(
-			(ac, cv) => 
-				({
-					debt: ac.debt + +cv.debt_current,
-					borrowersCount: ac.borrowersCount + 1,
-				}),
+			(ac, cv) => ({
+				debt: ac.debt + +cv.debt_current,
+				borrowersCount: ac.borrowersCount + 1,
+			}),
 			{
 				collateral: 0,
 				debt: 0,
@@ -483,15 +535,15 @@ async function getLendingInfo() {
 			}
 		);
 
-
 		borrowers.push({
 			...res,
 			collateral: poolData.loan_collateral,
 			pool: poolData.asset,
-			availableRune: (poolData.balance_rune / totalBalanceRune) * totalRuneForProtocol,
+			availableRune:
+        (poolData.balance_rune / totalBalanceRune) * totalRuneForProtocol,
 			fill:
-				collateralPoolInRune /
-				((poolData.balance_rune / totalBalanceRune) * totalRuneForProtocol),
+        collateralPoolInRune /
+        ((poolData.balance_rune / totalBalanceRune) * totalRuneForProtocol),
 			collateralPoolInRune,
 			debtInRune: res.debt * (torPool.balance_rune / torPool.balance_asset),
 			collateralAvailable: poolData.loan_collateral_remaining,
@@ -519,5 +571,5 @@ module.exports = {
 	SwapQuery,
 	ThorchainStatsDaily,
 	FeesRewardsMonthly,
-	AffiliateSwapsByWallet
+	AffiliateSwapsByWallet,
 };
