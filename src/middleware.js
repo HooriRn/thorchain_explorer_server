@@ -44,13 +44,17 @@ require('dotenv').config();
 const { Flipside } = require('@flipsidecrypto/sdk');
 const { modules } = require('../endpoints');
 const { GetDerivedAsset } = require('./util');
-const { getTHORlastblock } = require('./infra');
+const { getTHORlastblock, getActions } = require('./infra');
 const {
 	thorchainStatsDaily,
 	feesVsRewardsMonthly,
 	swapsCategoricalMonthly,
 	affiliateSwapsByWallet,
+	affiliateByWallet,
+	dailyAffiliateMade,
 } = require('./sql');
+const moment = require('moment');
+const { actions } = require('./actions');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
 	'https://api-v2.flipsidecrypto.xyz'
@@ -84,13 +88,16 @@ async function dashboardPlots() {
 		return +oldPeriodData;
 	};
 	
+	await wait(2000);
 	const oOne = (await oldPeriodFunc(swaps.intervals[len - 2], swaps.intervals[len - 1]));
+	await wait(2000);
 	const oTwo = (await oldPeriodFunc(swaps.intervals[len - 3], swaps.intervals[len - 1]));
+	await wait(2000);
 	const oThree = (await oldPeriodFunc(swaps.intervals[len - 4], swaps.intervals[len - 1]));
 	const oldPeriodVolume = (oOne + oTwo + oThree) / 3;
 	const oldTotalAverage = swaps.intervals.slice(-4, -1).reduce((a, c) => a + +c.totalVolumeUSD, 0) / 3;
 	const EODVolume = swaps.intervals[len - 1].totalVolumeUSD * oldPeriodVolume / (oldTotalAverage - oldPeriodVolume);
-	swaps.intervals[len - 1].EODVolume = EODVolume;
+	swaps.intervals[len - 1].EODVolume = Math.floor(EODVolume);
 
 	return {
 		LPChange,
@@ -108,13 +115,24 @@ async function dashboardData() {
 	const lastBlockHeight = await getLastBlockHeight();
 	const stats = await getStats();
 
+	const to = moment().unix()
+	const from = moment().subtract(1, 'days').unix()
+	const {
+		data: {
+			meta: { totalVolumeUSD: volume24USD },
+		},
+	} = await swapHistoryParams(from, to);
+
 	return {
 		txs: txs.data,
 		addresses: addresses.data,
 		blockHeight: blockHeight.data,
 		runeSupply: runeSupply.data,
 		lastBlockHeight: lastBlockHeight.data,
-		stats: stats.data,
+		stats: { 
+			...stats.data,
+			volume24USD
+		},
 	};
 }
 
@@ -164,6 +182,15 @@ async function extraNodesInfo() {
 	return nodeInfo;
 }
 
+async function nodesInfo() {
+	const { data: nodes } = await getNodes();
+	const nodesIP = actions['extraNodesInfo']?.value
+
+	console.log(nodes, nodesIP)
+
+	return 'Success';
+}
+
 async function SwapQuery() {
 	let sql = swapsCategoricalMonthly;
 
@@ -188,6 +215,21 @@ async function FeesRewardsMonthly() {
 
 async function AffiliateSwapsByWallet() {
 	let sql = affiliateSwapsByWallet;
+
+	let data = await flipside.query.run({ sql: sql });
+	console.log(data)
+	return data.records;
+}
+
+async function AffiliateByWallet() {
+	let sql = affiliateByWallet;
+
+	let data = await flipside.query.run({ sql: sql });
+	return data.records;
+}
+
+async function AffiliateDaily() {
+	let sql = dailyAffiliateMade;
 
 	let data = await flipside.query.run({ sql: sql });
 	return data.records;
@@ -553,6 +595,18 @@ async function getLendingInfo() {
 	return borrowers;
 }
 
+async function getCoinMarketCapInfo() {
+	const response = await axios.get('https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest', {
+		headers: {
+			'X-CMC_PRO_API_KEY': process.env.COIN_CAP,
+		},
+		params: {
+			slug: 'thorchain'
+		}
+	});
+	return (response.data.data["4157"])
+}
+
 module.exports = {
 	dashboardData,
 	dashboardPlots,
@@ -572,4 +626,8 @@ module.exports = {
 	ThorchainStatsDaily,
 	FeesRewardsMonthly,
 	AffiliateSwapsByWallet,
+	AffiliateByWallet,
+	AffiliateDaily,
+	getActions,
+	getCoinMarketCapInfo,
 };

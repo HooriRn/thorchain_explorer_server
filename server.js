@@ -33,7 +33,7 @@ var actions = {
 	},
 	dashboardPlots: {
 		fetcher: requests.dashboardPlots,
-		updateEvery: 60 * 60
+		updateEvery: 60 * 10
 	},
 	extraNodesInfo: {
 		fetcher: requests.extraNodesInfo,
@@ -66,22 +66,6 @@ var actions = {
 	borrowers: {
 		fetcher: requests.getLendingInfo,
 		updateEvery: 60 * 2
-	},
-	swapsWeekly: {
-		fetcher: requests.SwapQuery,
-		updateEvery: 60 * 60 * 24,
-	},
-	statsDaily: {
-		fetcher: requests.ThorchainStatsDaily,
-		updateEvery: 60 * 60 * 24
-	},
-	feesRewardsMonthly: {
-		fetcher: requests.FeesRewardsMonthly,
-		updateEvery: 60 * 60 * 24
-	},
-	affiliateSwapsByWallet: {
-		fetcher: requests.AffiliateSwapsByWallet,
-		updateEvery: 60 * 60 * 24
 	},
 	historyPools: {
 		fetcher: requests.getPoolsDVE,
@@ -124,6 +108,33 @@ var actions = {
 		params: {interval: 'year'},
 	},
 };
+
+var sqls = {
+	swapsWeekly: {
+		fetcher: requests.SwapQuery,
+		updateEvery: 60 * 60 * 24,
+	},
+	statsDaily: {
+		fetcher: requests.ThorchainStatsDaily,
+		updateEvery: 60 * 60 * 24
+	},
+	feesRewardsMonthly: {
+		fetcher: requests.FeesRewardsMonthly,
+		updateEvery: 60 * 60 * 24
+	},
+	affiliateSwapsByWallet: {
+		fetcher: requests.AffiliateSwapsByWallet,
+		updateEvery: 60 * 60 * 24
+	},
+	affiliateByWallet: {
+		fetcher: requests.AffiliateByWallet,
+		updateEvery: 60 * 60 * 24
+	},
+	affiliateDaily: {
+		fetcher: requests.AffiliateDaily,
+		updateEvery: 60 * 60 * 24
+	}
+}
 
 async function updateAction(name) {
 	if (!actions[name]) {
@@ -172,6 +183,10 @@ function shouldBeUpdated(record) {
 
 /* Update all the values at server init */
 async function mainFunction() {
+	if (process.env.NETWORK === 'mainnet') {
+		actions = {...mainnet, ...actions}
+	}
+
 	initActionsFromStorage();
 	
 	for (var name of Object.keys(actions)) {
@@ -234,6 +249,11 @@ app.get('/', (req, res) => {
 app.get('/lastblock', async (req, res) => {
 	const height = await requests.getTHORlastblock();
 	res.json(height);
+});
+
+app.get('/actions', async (req, res) => {
+	const actions = await requests.getActions(req.query);
+	res.json(actions);
 });
 
 app.listen(PORT, HOST);
