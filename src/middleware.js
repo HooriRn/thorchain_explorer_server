@@ -15,6 +15,7 @@ const {
 	getMemberDetails,
 	swapHistoryFrom,
 	swapHistoryParams,
+	getNetwork,
 } = require('./midgard');
 const {
 	getAddresses,
@@ -36,15 +37,15 @@ var utc = require('dayjs/plugin/utc');
 dayjs.extend(utc);
 const { default: axios } = require('axios');
 const axiosRetry = require('axios-retry');
-const { omit, chunk } = require('lodash');
+const { omit, chunk, compact } = require('lodash');
 
 axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 require('dotenv').config();
 const { Flipside } = require('@flipsidecrypto/sdk');
 const { modules } = require('../endpoints');
-const { GetDerivedAsset } = require('./util');
-const { getTHORlastblock, getActions } = require('./infra');
+const { GetDerivedAsset, blockTime } = require('./util');
+const { getTHORlastblock, getActions, getQuote, getTopSwaps } = require('./infra');
 const {
 	thorchainStatsDaily,
 	feesVsRewardsMonthly,
@@ -54,7 +55,7 @@ const {
 	dailyAffiliateMade,
 } = require('./sql');
 const moment = require('moment');
-const { actions } = require('./actions');
+const { response } = require('express');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
 	'https://api-v2.flipsidecrypto.xyz'
@@ -182,13 +183,89 @@ async function extraNodesInfo() {
 	return nodeInfo;
 }
 
+function getNodesMaxHeightOnChains(nodes) {
+	const observedChains = compact(nodes.map(n => n.observe_chains))
+	const maxObserevedChains = {}
+	for (let i = 0; i < observedChains.length; i++) {
+		const nodeChains = observedChains[i];
+		for (let j = 0; j < nodeChains.length; j++) {
+			const {chain, height} = nodeChains[j];
+			if (!maxObserevedChains[chain] || maxObserevedChains[chain] < height) {
+				maxObserevedChains[chain] = height
+			}
+		}	
+	}
+
+	return maxObserevedChains
+}
+
 async function nodesInfo() {
 	const { data: nodes } = await getNodes();
-	const nodesIP = actions['extraNodesInfo']?.value
 
-	console.log(nodes, nodesIP)
+	const nodesIPUrl = `http://0.0.0.0:${process.env.PORT}${process.env.NETWORK === 'stagenet' ? '/stage' : ''}/api/extraNodesInfo`
+	const chainsHeightUrl = `http://0.0.0.0:${process.env.PORT}${process.env.NETWORK === 'stagenet' ? '/stage' : ''}/api/chainsHeight`
+	const {data: nodesIP } = await axios.get(nodesIPUrl)
+	const {data: heights } = await axios.get(chainsHeightUrl)
 
-	return 'Success';
+	const maxObserevedChains = getNodesMaxHeightOnChains(nodes)
+
+	const {CHURNINTERVAL, HALTCHURNING, MINIMUMBONDINRUNE} = (await getMimir()).data
+	const {nextChurnHeight} = (await getNetwork()).data
+	const churnsInYear = 365 / ((6 * CHURNINTERVAL) / (60 * 60 * 24))
+	const ratioReward = (CHURNINTERVAL - (+nextChurnHeight - heights.THOR)) / CHURNINTERVAL
+	
+	let scannerEndpoints = nodes.filter(n => +n.total_bond > 300000 * 1e8).map(n => `http://${n.ip_address}:6040/status/scanner`)
+
+	let scannerStatus = []
+	await Promise.all(scannerEndpoints.map((promise) => axios.get(promise)))
+		.then((datum) => {
+			datum.map(d => {
+				scannerStatus[d.request.host] = d.data
+			})
+		})
+		.catch((res) => console.error(res));
+
+	const ret = nodes.map(n => {
+		// IP
+		let nIP = {}
+		if (nodesIP[n.ip_address]) {
+			nIP = nodesIP[n.ip_address]
+		}
+		// Behind
+		let chains = {}
+		n?.observe_chains?.forEach(o => {
+			chains[o.chain] = maxObserevedChains[o.chain] - o.height
+		})
+		// Age
+		const ageDays = heights.THOR - n.status_since
+		const age = {
+			number: (ageDays * 6) / (60 * 60 * 24),
+			info: blockTime(ageDays)
+		}
+		// APY
+		const APY = ((n.current_award / ratioReward) * churnsInYear) / n.total_bond ?? null
+
+		if (scannerStatus[n.ip_address]) {
+			for (const [chain, value] of Object.entries(scannerStatus[n.ip_address])) {
+				chains[chain] = value.scanner_height_diff
+			}
+		}
+
+		return {
+			...n,
+			age,
+			apy: APY,
+			city: nIP.city,
+			isp: nIP.isp,
+			org: nIP.org,
+			country: nIP.country,
+			countryCode: nIP.countryCode,
+			behind: chains ? chains : null,
+			scanner: scannerStatus[n.ip_address] ?? null
+		}
+	})	
+
+	return ret
 }
 
 async function SwapQuery() {
@@ -630,4 +707,7 @@ module.exports = {
 	AffiliateDaily,
 	getActions,
 	getCoinMarketCapInfo,
+	nodesInfo,
+	getQuote,
+	getTopSwaps
 };

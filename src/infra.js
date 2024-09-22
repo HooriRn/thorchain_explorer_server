@@ -26,7 +26,19 @@ async function getActions(params) {
 	return actions;
 }
 
+async function getQuote(params) {
+	const quote = (await axios.get('thorchain/quote/swap', { params })).data;
+	return quote;
+}
+
+async function getTopSwaps() {
+	const swaps = (await midAxios.get('swaps')).data;
+	return swaps;
+}
+
 module.exports = {
 	getTHORlastblock,
-	getActions
+	getActions,
+	getQuote,
+	getTopSwaps
 };

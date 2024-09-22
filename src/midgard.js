@@ -214,6 +214,10 @@ function getMemberDetails(memberID) {
 	return axiosInstace.get(`member/${memberID}`);
 }
 
+function getNetwork() {
+	return axiosInstace.get('network');
+}
+
 module.exports = {
 	getTxs,
 	getStats,
@@ -233,5 +237,6 @@ module.exports = {
 	getDepthsHistoryParam,
 	getMemberDetails,
 	swapHistoryFrom,
-	swapHistoryParams
+	swapHistoryParams,
+	getNetwork
 };

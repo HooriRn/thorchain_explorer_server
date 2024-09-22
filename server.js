@@ -109,7 +109,11 @@ var actions = {
 	},
 };
 
-var sqls = {
+var mainnet = {
+	swaps: {
+		fetcher: requests.getTopSwaps,
+		updateEvery: 60
+	},
 	swapsWeekly: {
 		fetcher: requests.SwapQuery,
 		updateEvery: 60 * 60 * 24,
@@ -133,7 +137,30 @@ var sqls = {
 	affiliateDaily: {
 		fetcher: requests.AffiliateDaily,
 		updateEvery: 60 * 60 * 24
+	},
+	coinmarketCap: {
+		fetcher: requests.getCoinMarketCapInfo,
+		updateEvery: 60 * 60 * 12
+	},
+	nodesInfo: {
+		fetcher: requests.nodesInfo,
+		updateEvery: 20
 	}
+}
+
+var test = {
+	extraNodesInfo: {
+		fetcher: requests.extraNodesInfo,
+		updateEvery: 20
+	},
+	chainsHeight: {
+		fetcher: requests.chainsHeight,
+		updateEvery: 10
+	},
+	test: {
+		fetcher: requests.nodesInfo,
+		updateEvery: 60
+	},
 }
 
 async function updateAction(name) {
@@ -254,6 +281,11 @@ app.get('/lastblock', async (req, res) => {
 app.get('/actions', async (req, res) => {
 	const actions = await requests.getActions(req.query);
 	res.json(actions);
+});
+
+app.get('/quote', async (req, res) => {
+	const quote = await requests.getQuote(req.query);
+	res.json(quote);
 });
 
 app.listen(PORT, HOST);
