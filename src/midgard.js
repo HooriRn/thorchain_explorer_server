@@ -94,6 +94,16 @@ function swapHistoryParams(from, to) {
 	return axiosInstace.get('history/swaps', {params});
 }
 
+function earningsHistoryParams(from, to) { 
+	const params = {
+		from,
+		to
+	};
+
+	return axiosInstace.get('history/earnings', {params});
+}
+
+
 function getPoolSwapHistory(pool = '', interval = '', count = '') {
 	const poolParam = `pool=${pool}`;
 	const intervalParam = `interval=${interval}`;
@@ -238,5 +248,6 @@ module.exports = {
 	getMemberDetails,
 	swapHistoryFrom,
 	swapHistoryParams,
-	getNetwork
+	getNetwork,
+	earningsHistoryParams
 };

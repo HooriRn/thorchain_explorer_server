@@ -16,6 +16,7 @@ const {
 	swapHistoryFrom,
 	swapHistoryParams,
 	getNetwork,
+	earningsHistoryParams,
 } = require('./midgard');
 const {
 	getAddresses,
@@ -66,14 +67,15 @@ async function dashboardPlots() {
 	const { data: swaps } = await swapHistory();
 	const { data: tvl } = await tvlHistory();
 	const { data: earning } = await earningsHistory();
+	await wait(2000);
 
+	// ADD EOD volume
 	const len = swaps.intervals.length;
 	const { data: lastSwaps } = await swapHistoryFrom(
 		swaps.intervals[len - 1].startTime
 	);
 	swaps.intervals[len - 1] = lastSwaps?.meta;
 
-	// ADD EOD volume
 	const oldPeriodFunc = async (start, end) => {
 		const oldPeriod = {
 			from: +end.endTime - +end.startTime + +start.startTime,
@@ -88,17 +90,59 @@ async function dashboardPlots() {
 
 		return +oldPeriodData;
 	};
-	
+
 	await wait(2000);
 	const oOne = (await oldPeriodFunc(swaps.intervals[len - 2], swaps.intervals[len - 1]));
 	await wait(2000);
 	const oTwo = (await oldPeriodFunc(swaps.intervals[len - 3], swaps.intervals[len - 1]));
 	await wait(2000);
 	const oThree = (await oldPeriodFunc(swaps.intervals[len - 4], swaps.intervals[len - 1]));
+	await wait(2000);
 	const oldPeriodVolume = (oOne + oTwo + oThree) / 3;
 	const oldTotalAverage = swaps.intervals.slice(-4, -1).reduce((a, c) => a + +c.totalVolumeUSD, 0) / 3;
 	const EODVolume = swaps.intervals[len - 1].totalVolumeUSD * oldPeriodVolume / (oldTotalAverage - oldPeriodVolume);
 	swaps.intervals[len - 1].EODVolume = Math.floor(EODVolume);
+
+	// ADD EOD Earnings
+	const lenEarning = earning.intervals.length;
+	const { data: lastEarning } = await getEarningsParam(
+		[{
+			key: 'from',
+			value: earning.intervals[lenEarning - 1].startTime,
+		}]
+	);
+	earning.intervals[lenEarning - 1] = lastEarning?.meta;
+
+	const oldTVLFunc = async (start, end) => {
+		const oldPeriod = {
+			from: +end.endTime - +end.startTime + +start.startTime,
+			to: +start.endTime,
+		};
+
+		const {
+			data: {
+				meta: {
+					bondingEarnings: oldBondEarnings,
+					liquidityEarnings: oldLiquidityEarnings 
+				}
+			},
+		} = await getEarningsParam(createFromToParam(oldPeriod.from, oldPeriod.to));
+
+		return {oldBondEarnings: +oldBondEarnings, oldLiquidityEarnings: +oldLiquidityEarnings};
+	}
+
+	await wait(2000);
+	const tOne = (await oldTVLFunc(earning.intervals[len - 2], earning.intervals[len - 1]));
+	await wait(2000);
+	const tTwo = (await oldTVLFunc(earning.intervals[len - 3], earning.intervals[len - 1]));
+	const oldPeriodBondEarning = (tOne.oldBondEarnings + tTwo.oldBondEarnings) / 2;
+	const oldTotalBondEarnings = earning.intervals.slice(-3, -1).reduce((a, c) => a + +c.bondingEarnings, 0) / 2;
+	const EODBondEarnings = earning.intervals[len - 1].bondingEarnings * oldPeriodBondEarning / (oldTotalBondEarnings - oldPeriodBondEarning);
+	const oldPeriodLiquidityEarning = (tOne.oldLiquidityEarnings + tTwo.oldLiquidityEarnings) / 2;
+	const oldTotalLiquidityEarnings = earning.intervals.slice(-3, -1).reduce((a, c) => a + +c.liquidityEarnings, 0) / 2;
+	const EODLiquidityEarnings = earning.intervals[len - 1].liquidityEarnings * oldPeriodLiquidityEarning / (oldTotalLiquidityEarnings - oldPeriodLiquidityEarning);
+	earning.intervals[len - 1].EODBondEarnings = Math.floor(EODBondEarnings);
+	earning.intervals[len - 1].EODLiquidityEarnings = Math.floor(EODLiquidityEarnings);
 
 	return {
 		LPChange,
@@ -124,6 +168,12 @@ async function dashboardData() {
 		},
 	} = await swapHistoryParams(from, to);
 
+	const {
+		data: {
+			meta: { earnings: earnings24 },
+		},
+	} = await earningsHistoryParams(from, to);
+
 	return {
 		txs: txs.data,
 		addresses: addresses.data,
@@ -132,7 +182,8 @@ async function dashboardData() {
 		lastBlockHeight: lastBlockHeight.data,
 		stats: { 
 			...stats.data,
-			volume24USD
+			volume24USD,
+			earnings24
 		},
 	};
 }
@@ -217,9 +268,10 @@ async function nodesInfo() {
 	let scannerEndpoints = nodes.filter(n => +n.total_bond > 300000 * 1e8).map(n => `http://${n.ip_address}:6040/status/scanner`)
 
 	let scannerStatus = []
-	await Promise.all(scannerEndpoints.map((promise) => axios.get(promise)))
-		.then((datum) => {
-			datum.map(d => {
+	await Promise.allSettled(scannerEndpoints.map((promise) => axios.get(promise)))
+		.then((res) => {
+			const fulfilled = res.filter(d => d.status === 'fulfilled').map(d => d.value);
+			fulfilled.map(d => {
 				scannerStatus[d.request.host] = d.data
 			})
 		})
