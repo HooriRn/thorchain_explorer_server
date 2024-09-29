@@ -175,5 +175,6 @@ module.exports = {
 	getThorRunePool,
 	getThorRuneProviders,
 	getDerivedPoolDetail,
-	getBorrowers
+	getBorrowers,
+	getAsgard
 };

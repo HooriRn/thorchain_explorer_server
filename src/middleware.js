@@ -32,6 +32,7 @@ const {
 	getThorRuneProviders,
 	getDerivedPoolDetail,
 	getBorrowers,
+	getAsgard,
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
@@ -152,6 +153,12 @@ async function dashboardPlots() {
 	};
 }
 
+async function rawEarnings() {
+	const { data } = await getEarnings()
+
+	return data
+}
+
 async function dashboardData() {
 	const txs = await getTxs();
 	const addresses = await getAddresses();
@@ -170,7 +177,7 @@ async function dashboardData() {
 
 	const {
 		data: {
-			meta: { earnings: earnings24 },
+			meta: { earnings: earnings24, pools: poolsEarnings },
 		},
 	} = await earningsHistoryParams(from, to);
 
@@ -183,7 +190,9 @@ async function dashboardData() {
 		stats: { 
 			...stats.data,
 			volume24USD,
-			earnings24
+			earnings24,
+			devFundReward: poolsEarnings.find(p => p.pool === "dev_fund_reward"),
+			incomeBurn: poolsEarnings.find(p => p.pool === 'income_burn')
 		},
 	};
 }
@@ -257,7 +266,9 @@ async function nodesInfo() {
 	const chainsHeightUrl = `http://0.0.0.0:${process.env.PORT}${process.env.NETWORK === 'stagenet' ? '/stage' : ''}/api/chainsHeight`
 	const {data: nodesIP } = await axios.get(nodesIPUrl)
 	const {data: heights } = await axios.get(chainsHeightUrl)
+	const {data: vaults} = await getAsgard()
 
+	const vaultKeys = vaults.map(v => v.pub_key)
 	const maxObserevedChains = getNodesMaxHeightOnChains(nodes)
 
 	const {CHURNINTERVAL, HALTCHURNING, MINIMUMBONDINRUNE} = (await getMimir()).data
@@ -296,6 +307,15 @@ async function nodesInfo() {
 		}
 		// APY
 		const APY = ((n.current_award / ratioReward) * churnsInYear) / n.total_bond ?? null
+		// Vault Membership
+		let vaultMembership = null
+		for (let vi = 0; vi < vaultKeys.length; vi++) {
+			const e = vaultKeys[vi];
+			const membership = n.signer_membership.find(v => v === e)
+			if (membership) {
+				vaultMembership = membership
+			}
+		}
 
 		if (scannerStatus[n.ip_address]) {
 			for (const [chain, value] of Object.entries(scannerStatus[n.ip_address])) {
@@ -313,7 +333,8 @@ async function nodesInfo() {
 			country: nIP.country,
 			countryCode: nIP.countryCode,
 			behind: chains ? chains : null,
-			scanner: scannerStatus[n.ip_address] ?? null
+			scanner: scannerStatus[n.ip_address] ?? null,
+			vaultMembership
 		}
 	})	
 
@@ -761,5 +782,6 @@ module.exports = {
 	getCoinMarketCapInfo,
 	nodesInfo,
 	getQuote,
-	getTopSwaps
+	getTopSwaps,
+	rawEarnings
 };

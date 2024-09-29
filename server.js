@@ -43,6 +43,10 @@ var actions = {
 		fetcher: requests.chainsHeight,
 		updateEvery: 10
 	},
+	rawEarnings: {
+		fetcher: requests.rawEarnings,
+		updateEvery: 60 * 60
+	},
 	saversInfo: {
 		fetcher: requests.getSaversInfo,
 		updateEvery: 60 * 60
