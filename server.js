@@ -73,42 +73,42 @@ var actions = {
 	},
 	historyPools: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 2 * 60 * 60,
+		updateEvery: 24 * 60 * 60,
 		params: {interval: 'day'},
 	},
 	historyPoolsWeek: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 2 * 60 * 60,
+		updateEvery: 3 * 24 * 60 * 60,
 		params: {interval: 'week'},
 	},
 	historyPoolsMonth: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 3 * 60 * 60,
+		updateEvery: 15 * 24 * 60 * 60,
 		params: {interval: 'month'},
 	},
 	historyPoolsYear: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 4 * 60 * 60,
+		updateEvery: 30 * 24 * 60 * 60,
 		params: {interval: 'year'},
 	},
 	oldHistoryPools: {
 		fetcher: requests.getOldPoolsDVE,
-		updateEvery: 60 * 60,
+		updateEvery: 24 * 60 * 60,
 		params: {interval: 'day'},
 	},
 	oldHistoryPoolsWeek: {
 		fetcher: requests.getOldPoolsDVE,
-		updateEvery: 2 * 60 * 60,
+		updateEvery: 3 * 24 * 60 * 60,
 		params: {interval: 'week'},
 	},
 	oldHistoryPoolsMonth: {
 		fetcher: requests.getOldPoolsDVE,
-		updateEvery: 3 * 60 * 60,
+		updateEvery: 15 * 24 * 60 * 60,
 		params: {interval: 'month'},
 	},
 	oldHistoryPoolsYear: {
 		fetcher: requests.getOldPoolsDVE,
-		updateEvery: 4 * 60 * 60,
+		updateEvery: 30 * 24 * 60 * 60,
 		params: {interval: 'year'},
 	},
 };
@@ -186,6 +186,7 @@ async function updateAction(name) {
 
 		store.put(name, {value: res, lastUpdate: actions[name]['lastUpdate']});
 	} catch (e) {
+		console.error(name, e)
 		actions[name].err = e;
 		console.error(`${dayjs().format()} - Error occured in -- ${name} -- ${e.response?.statusText ?? e.response}`);
 	}
@@ -212,6 +213,8 @@ function shouldBeUpdated(record) {
 	return Date.now() - record.lastUpdate >= record.updateEvery * 1000;
 }
 
+const routines = ['nodesInfo']
+
 /* Update all the values at server init */
 async function mainFunction() {
 	if (process.env.NETWORK === 'mainnet') {
@@ -227,6 +230,16 @@ async function mainFunction() {
 		}
 	}
 
+	// Faster routine
+	if (process.env.NETWORK === 'mainnet') {
+		setIntervalAsync(async () => {
+			routines.forEach((e) => {
+				debugLogger(`Updating routine: ${e}`);
+				updateAction(e)
+			})
+		}, 3 * 1e3)
+	}
+
 	debugLogger('Starting interval...');
 	startInterval();
 }
@@ -234,6 +247,9 @@ async function mainFunction() {
 function startInterval () {
 	return setIntervalAsync(async () => {
 		for (var name of Object.keys(actions)) {
+			if (routines.includes(name)) {
+				continue
+			}
 			var record = actions[name];
 	
 			/* update the record if it's the time */

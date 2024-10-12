@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 const Axios = require('axios');
+const { endpoints } = require('../endpoints');
 require('dotenv').config();
 
 // Axios configs

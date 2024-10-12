@@ -37,11 +37,12 @@ const {
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
 dayjs.extend(utc);
-const { default: axios } = require('axios');
-const axiosRetry = require('axios-retry');
+const Axios = require('axios');
 const { omit, chunk, compact } = require('lodash');
 
-axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
+const axios = Axios.create({
+	timeout: 5000,
+});
 
 require('dotenv').config();
 const { Flipside } = require('@flipsidecrypto/sdk');
@@ -66,6 +67,7 @@ const flipside = new Flipside(
 async function dashboardPlots() {
 	const { data: LPChange } = await volumeHistory();
 	const { data: swaps } = await swapHistory();
+	await wait(2000);
 	const { data: tvl } = await tvlHistory();
 	const { data: earning } = await earningsHistory();
 	await wait(2000);
@@ -270,6 +272,7 @@ async function nodesInfo() {
 
 	const vaultKeys = vaults.map(v => v.pub_key)
 	const maxObserevedChains = getNodesMaxHeightOnChains(nodes)
+	const maxObserevedStandby = getNodesMaxHeightOnChains(nodes.filter(n => n.status === 'Standby'))
 
 	const {CHURNINTERVAL, HALTCHURNING, MINIMUMBONDINRUNE} = (await getMimir()).data
 	const {nextChurnHeight} = (await getNetwork()).data
@@ -296,8 +299,9 @@ async function nodesInfo() {
 		}
 		// Behind
 		let chains = {}
+		let max = n.status === 'Active' ? maxObserevedChains : maxObserevedStandby
 		n?.observe_chains?.forEach(o => {
-			chains[o.chain] = maxObserevedChains[o.chain] - o.height
+			chains[o.chain] = max[o.chain] - o.height
 		})
 		// Age
 		const ageDays = heights.THOR - n.status_since
