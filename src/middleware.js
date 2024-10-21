@@ -1,5 +1,4 @@
 const {
-	getTxs,
 	getStats,
 	volumeHistory,
 	swapHistory,
@@ -33,6 +32,7 @@ const {
 	getDerivedPoolDetail,
 	getBorrowers,
 	getAsgard,
+	getBalance,
 } = require('./thornode');
 const dayjs = require('dayjs');
 var utc = require('dayjs/plugin/utc');
@@ -59,6 +59,7 @@ const {
 } = require('./sql');
 const moment = require('moment');
 const { response } = require('express');
+const { CEX_ADDRESSES } = require('./constants');
 const flipside = new Flipside(
 	process.env.FLIP_KEY,
 	'https://api-v2.flipsidecrypto.xyz'
@@ -162,7 +163,10 @@ async function rawEarnings() {
 }
 
 async function dashboardData() {
-	const txs = await getTxs();
+	const txs = await getActions({
+		limit: 10,
+		asset: 'notrade',
+	});
 	const addresses = await getAddresses();
 	const blockHeight = await getRPCLastBlockHeight();
 	const runeSupply = await getSupplyRune();
@@ -184,7 +188,7 @@ async function dashboardData() {
 	} = await earningsHistoryParams(from, to);
 
 	return {
-		txs: txs.data,
+		txs: txs,
 		addresses: addresses.data,
 		blockHeight: blockHeight.data,
 		runeSupply: runeSupply.data,
@@ -761,6 +765,20 @@ async function getCoinMarketCapInfo() {
 	return (response.data.data["4157"])
 }
 
+async function getNetworkAllocation() {
+	const cex_balances = {cexs: [], total: 0}
+	for(const [address, name] of Object.entries(CEX_ADDRESSES)) {
+		const balance = +(await getBalance(address)).find(b => b.denom === 'rune')?.amount
+		cex_balances.cexs.push({
+			name,
+			balance
+		})
+		cex_balances.total += balance
+	}
+
+	return cex_balances
+}
+
 module.exports = {
 	dashboardData,
 	dashboardPlots,
@@ -787,5 +805,6 @@ module.exports = {
 	nodesInfo,
 	getQuote,
 	getTopSwaps,
-	rawEarnings
+	rawEarnings,
+	getNetworkAllocation
 };

@@ -20,10 +20,16 @@ function getMimir() {
 	return axiosInstace.get('thorchain/mimir');
 }
 
-function getBalance(address) {
-	return axiosInstace.get(
-		`bank/balances/${address}`
-	);
+async function getBalance(address) {
+	balance = []
+	try {
+		let res = await axiosInstace.get(`bank/balances/${address}`);
+		balance = res?.data?.result
+	} catch (error) {
+		console.error('Cant get the balance of :' + address)	
+	}
+
+	return balance
 }
 
 function getLastBlockHeight() {
@@ -176,5 +182,6 @@ module.exports = {
 	getThorRuneProviders,
 	getDerivedPoolDetail,
 	getBorrowers,
+	getBalance,
 	getAsgard
 };

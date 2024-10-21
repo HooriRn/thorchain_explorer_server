@@ -20,17 +20,6 @@ function getStats() {
 	return axiosInstace.get('stats');
 }
 
-function getTxs(offset = 0, limit = 10, type = undefined) {
-	const params = {
-		offset,
-		limit,
-	};
-
-	if (type) params['type'] = type;
-
-	return axiosInstace.get('actions', { params });
-}
-
 function getConstants() {
 	return axiosInstace.get('thorchain/constants');
 }
@@ -229,7 +218,6 @@ function getNetwork() {
 }
 
 module.exports = {
-	getTxs,
 	getStats,
 	volumeHistory,
 	swapHistory,

@@ -6,8 +6,16 @@ const PORT = process.env.PORT;
 const HOST = '0.0.0.0';
 const express = require('express');
 const app = express();
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+	windowMs: 10 * 1000, // 1 minutes
+	max: 100,
+	message: "Too many requests from this IP, please try again later"
+});
 
 const cors = require('cors');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const requests = require('./src/middleware');
 
@@ -21,6 +29,10 @@ const corsOptions = {
 
 app.use(express.json());
 app.use(cors(corsOptions));
+app.use(limiter);
+
+const NodeCache = require('node-cache');
+const cache = new NodeCache({ stdTTL: 10, checkperiod: 10 });
 
 function debugLogger(sb) {
 	console.log(`${dayjs().format()} - ${sb}`);
@@ -149,22 +161,18 @@ var mainnet = {
 	nodesInfo: {
 		fetcher: requests.nodesInfo,
 		updateEvery: 20
+	},
+	getNetworkAllocation: {
+		fetcher: requests.getNetworkAllocation,
+		updateEvery: 60
 	}
 }
 
 var test = {
-	extraNodesInfo: {
-		fetcher: requests.extraNodesInfo,
-		updateEvery: 20
-	},
-	chainsHeight: {
-		fetcher: requests.chainsHeight,
-		updateEvery: 10
-	},
-	test: {
-		fetcher: requests.nodesInfo,
+	getNetworkAllocation: {
+		fetcher: requests.getNetworkAllocation,
 		updateEvery: 60
-	},
+	}
 }
 
 async function updateAction(name) {
@@ -215,6 +223,10 @@ function shouldBeUpdated(record) {
 
 const routines = ['nodesInfo']
 
+process.on('unhandledRejection', (reason, promise) => {
+	console.error('Unhandled Promise Rejection:', reason);
+});
+
 /* Update all the values at server init */
 async function mainFunction() {
 	if (process.env.NETWORK === 'mainnet') {
@@ -237,7 +249,7 @@ async function mainFunction() {
 				debugLogger(`Updating routine: ${e}`);
 				updateAction(e)
 			})
-		}, 3 * 1e3)
+		}, 20 * 1e3)
 	}
 
 	debugLogger('Starting interval...');
@@ -294,7 +306,13 @@ app.get('/', (req, res) => {
 });
 
 app.get('/lastblock', async (req, res) => {
+	const data = cache.get('lastblock')
+	if (data) {
+		return res.json(data)
+	}
+
 	const height = await requests.getTHORlastblock();
+	cache.set('lastblock', height, 10)
 	res.json(height);
 });
 
@@ -307,6 +325,20 @@ app.get('/quote', async (req, res) => {
 	const quote = await requests.getQuote(req.query);
 	res.json(quote);
 });
+
+app.get('/block', createProxyMiddleware({
+	target: process.env.INFRA_URL,
+	pathRewrite: (path, req) => {
+		return path.replace('/block', '/thorchain/block');
+	},
+}));
+
+app.get('/nodes', createProxyMiddleware({
+	target: process.env.INFRA_URL,
+	pathRewrite: (path, req) => {
+		return path.replace('/nodes', '/thorchain/nodes');
+	},
+}));
 
 app.listen(PORT, HOST);
 
