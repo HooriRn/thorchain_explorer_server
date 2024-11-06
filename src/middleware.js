@@ -16,6 +16,8 @@ const {
 	swapHistoryParams,
 	getNetwork,
 	earningsHistoryParams,
+	getReserveHistoryParam,
+	getChurnPeriod,
 } = require('./midgard');
 const {
 	getAddresses,
@@ -53,8 +55,7 @@ const {
 	thorchainStatsDaily,
 	feesVsRewardsMonthly,
 	swapsCategoricalMonthly,
-	affiliateSwapsByWallet,
-	affiliateByWallet,
+	affiliatSwapsDuration,
 	dailyAffiliateMade,
 } = require('./sql');
 const moment = require('moment');
@@ -165,6 +166,7 @@ async function rawEarnings() {
 async function dashboardData() {
 	const txs = await getActions({
 		limit: 10,
+		type: 'swap,send',
 		asset: 'notrade',
 	});
 	const addresses = await getAddresses();
@@ -273,14 +275,20 @@ async function nodesInfo() {
 	const {data: nodesIP } = await axios.get(nodesIPUrl)
 	const {data: heights } = await axios.get(chainsHeightUrl)
 	const {data: vaults} = await getAsgard()
+	const {data: churns} = await getChurnPeriod()
 
 	const vaultKeys = vaults.map(v => v.pub_key)
 	const maxObserevedChains = getNodesMaxHeightOnChains(nodes)
 	const maxObserevedStandby = getNodesMaxHeightOnChains(nodes.filter(n => n.status === 'Standby'))
 
 	const {CHURNINTERVAL, HALTCHURNING, MINIMUMBONDINRUNE} = (await getMimir()).data
+	let churnPeriod = CHURNINTERVAL
+	const thisChurnPeriod = +heights.THOR - +churns[0]?.height
+	if (thisChurnPeriod > CHURNINTERVAL) {
+		churnPeriod = thisChurnPeriod
+	}
 	const {nextChurnHeight} = (await getNetwork()).data
-	const churnsInYear = 365 / ((6 * CHURNINTERVAL) / (60 * 60 * 24))
+	const churnsInYear = 365 / ((6 * churnPeriod) / (60 * 60 * 24))
 	const ratioReward = (CHURNINTERVAL - (+nextChurnHeight - heights.THOR)) / CHURNINTERVAL
 	
 	let scannerEndpoints = nodes.filter(n => +n.total_bond > 300000 * 1e8).map(n => `http://${n.ip_address}:6040/status/scanner`)
@@ -372,15 +380,14 @@ async function FeesRewardsMonthly() {
 }
 
 async function AffiliateSwapsByWallet() {
-	let sql = affiliateSwapsByWallet;
+	let sql = affiliatSwapsDuration();
 
 	let data = await flipside.query.run({ sql: sql });
-	console.log(data)
 	return data.records;
 }
 
-async function AffiliateByWallet() {
-	let sql = affiliateByWallet;
+async function AffiliateSwapsWeekly() {
+	let sql = affiliatSwapsDuration('7 days');
 
 	let data = await flipside.query.run({ sql: sql });
 	return data.records;
@@ -766,17 +773,34 @@ async function getCoinMarketCapInfo() {
 }
 
 async function getNetworkAllocation() {
-	const cex_balances = {cexs: [], total: 0}
+	const cexBalances = {cexs: [], totalCexs: 0}
 	for(const [address, name] of Object.entries(CEX_ADDRESSES)) {
-		const balance = +(await getBalance(address)).find(b => b.denom === 'rune')?.amount
-		cex_balances.cexs.push({
+		const balance = +(await getBalance(address)).find(b => b.denom === 'rune')?.amount || 0
+		cexBalances.cexs.push({
 			name,
 			balance
 		})
-		cex_balances.total += balance
+		cexBalances.totalCexs += balance
 	}
 
-	return cex_balances
+	const runeSupply = +(await getSupplyRune())?.data?.amount?.amount;
+
+	const {MAXRUNESUPPLY} = (await getMimir())?.data
+
+	return {
+		maxSupply: MAXRUNESUPPLY,
+		runeSupply: runeSupply,
+		...cexBalances
+	}
+}
+
+async function getReserve() {
+	const reserve = (await getReserveHistoryParam({
+		interval: 'day',
+		count: '30'
+	})).data
+
+	return reserve
 }
 
 module.exports = {
@@ -798,7 +822,7 @@ module.exports = {
 	ThorchainStatsDaily,
 	FeesRewardsMonthly,
 	AffiliateSwapsByWallet,
-	AffiliateByWallet,
+	AffiliateSwapsWeekly,
 	AffiliateDaily,
 	getActions,
 	getCoinMarketCapInfo,
@@ -806,5 +830,6 @@ module.exports = {
 	getQuote,
 	getTopSwaps,
 	rawEarnings,
-	getNetworkAllocation
+	getNetworkAllocation,
+	getReserve
 };

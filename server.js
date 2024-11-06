@@ -85,22 +85,22 @@ var actions = {
 	},
 	historyPools: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 24 * 60 * 60,
+		updateEvery: 6 * 60 * 60,
 		params: {interval: 'day'},
 	},
 	historyPoolsWeek: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 3 * 24 * 60 * 60,
+		updateEvery: 6 * 60 * 60,
 		params: {interval: 'week'},
 	},
 	historyPoolsMonth: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 15 * 24 * 60 * 60,
+		updateEvery: 6 * 60 * 60,
 		params: {interval: 'month'},
 	},
 	historyPoolsYear: {
 		fetcher: requests.getPoolsDVE,
-		updateEvery: 30 * 24 * 60 * 60,
+		updateEvery: 6 * 60 * 60,
 		params: {interval: 'year'},
 	},
 	oldHistoryPools: {
@@ -144,11 +144,11 @@ var mainnet = {
 	},
 	affiliateSwapsByWallet: {
 		fetcher: requests.AffiliateSwapsByWallet,
-		updateEvery: 60 * 60 * 24
+		updateEvery: 60 * 60 * 24,
 	},
-	affiliateByWallet: {
-		fetcher: requests.AffiliateByWallet,
-		updateEvery: 60 * 60 * 24
+	affiliateSwapsWeekly: {
+		fetcher: requests.AffiliateSwapsWeekly,
+		updateEvery: 60 * 60 * 24,
 	},
 	affiliateDaily: {
 		fetcher: requests.AffiliateDaily,
@@ -162,17 +162,29 @@ var mainnet = {
 		fetcher: requests.nodesInfo,
 		updateEvery: 20
 	},
-	getNetworkAllocation: {
+	networkAllocation: {
 		fetcher: requests.getNetworkAllocation,
+		updateEvery: 60
+	},
+	reserve: {
+		fetcher: requests.getReserve,
 		updateEvery: 60
 	}
 }
 
 var test = {
-	getNetworkAllocation: {
-		fetcher: requests.getNetworkAllocation,
-		updateEvery: 60
-	}
+	extraNodesInfo: {
+		fetcher: requests.extraNodesInfo,
+		updateEvery: 20
+	},
+	chainsHeight: {
+		fetcher: requests.chainsHeight,
+		updateEvery: 10
+	},
+	nodesInfo: {
+		fetcher: requests.nodesInfo,
+		updateEvery: 20
+	},
 }
 
 async function updateAction(name) {
@@ -236,7 +248,8 @@ async function mainFunction() {
 	initActionsFromStorage();
 	
 	for (var name of Object.keys(actions)) {
-		if (shouldBeUpdated(actions[name])) {
+		isForce = actions[name].force
+		if (shouldBeUpdated(actions[name]) || isForce) {
 			await updateAction(name);
 			await requests.wait(1000);
 		}

@@ -209,12 +209,22 @@ function getDepthsHistoryParam(pool = 'BTC.BTC', params = []) {
 	return axiosInstace.get(`history/depths/${pool}` + buildParams(params));
 }
 
+function getReserveHistoryParam(params) {
+	return axiosInstace.get(`history/reserve`, {
+		params
+	});
+}
+
 function getMemberDetails(memberID) {
 	return axiosInstace.get(`member/${memberID}`);
 }
 
 function getNetwork() {
 	return axiosInstace.get('network');
+}
+
+function getChurnPeriod() {
+	return axiosInstace.get('churns');
 }
 
 module.exports = {
@@ -233,9 +243,11 @@ module.exports = {
 	getEarningsParam,
 	getPoolSwapHistoryParam,
 	getDepthsHistoryParam,
+	getReserveHistoryParam,
 	getMemberDetails,
 	swapHistoryFrom,
 	swapHistoryParams,
 	getNetwork,
-	earningsHistoryParams
+	earningsHistoryParams,
+	getChurnPeriod
 };
