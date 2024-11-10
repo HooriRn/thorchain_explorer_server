@@ -364,6 +364,7 @@ async function SwapQuery() {
 
 	return data.records;
 }
+
 async function nodeOverview() {
 		const { data: networkData } = await getNetwork();
 
@@ -384,6 +385,7 @@ async function nodeOverview() {
 			blockRewards,
 		};
 }
+
 async function ThorchainStatsDaily() {
 	let sql = thorchainStatsDaily;
 
