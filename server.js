@@ -123,6 +123,10 @@ var actions = {
 		updateEvery: 30 * 24 * 60 * 60,
 		params: {interval: 'year'},
 	},
+	nodeOverview: {
+		fetcher: requests.nodeOverview,
+		updateEvery: 20
+	},
 };
 
 var mainnet = {
@@ -173,16 +177,8 @@ var mainnet = {
 }
 
 var test = {
-	extraNodesInfo: {
-		fetcher: requests.extraNodesInfo,
-		updateEvery: 20
-	},
-	chainsHeight: {
-		fetcher: requests.chainsHeight,
-		updateEvery: 10
-	},
-	nodesInfo: {
-		fetcher: requests.nodesInfo,
+	nodeOverview: {
+		fetcher: requests.nodeOverview,
 		updateEvery: 20
 	},
 }

@@ -365,6 +365,27 @@ async function SwapQuery() {
 	return data.records;
 }
 
+async function nodeOverview() {
+		const { data: networkData } = await getNetwork();
+
+		const { data: churnData } = await getChurnPeriod();
+
+		const { data: blockRewardData } = await getMimir();
+
+		const { date, height } = churnData[0];
+		const formattedDate = moment(date / 1e6).fromNow();
+		const churn = { date: formattedDate, height };
+
+		const network = networkData;
+		const blockRewards = blockRewardData;
+
+		return  {
+			churn,
+			network,
+			blockRewards,
+		};
+}
+
 async function ThorchainStatsDaily() {
 	let sql = thorchainStatsDaily;
 
@@ -804,6 +825,7 @@ async function getReserve() {
 }
 
 module.exports = {
+	nodeOverview,
 	dashboardData,
 	dashboardPlots,
 	extraNodesInfo,
